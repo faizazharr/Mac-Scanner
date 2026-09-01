@@ -159,6 +159,7 @@ struct DeviceInfoCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @MainActor
     private func copySpecsReport() {
         let report = """
         --- Mac Specs Report ---

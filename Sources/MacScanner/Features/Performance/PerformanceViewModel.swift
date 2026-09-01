@@ -204,7 +204,9 @@ final class PerformanceViewModel: ObservableObject {
     private func startAutoRefresh() {
         stopAutoRefresh()
         timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+            Task { @MainActor [weak self] in
+                self?.refresh()
+            }
         }
     }
 

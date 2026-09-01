@@ -6,7 +6,7 @@ import AppKit
 import SwiftUI
 
 /// Represents a single artifact or leftover directory belonging to an application.
-struct AppLeftoverItem: Identifiable, Hashable {
+struct AppLeftoverItem: Identifiable, Hashable, Sendable {
     let id = UUID()
     let category: LeftoverCategory
     let url: URL
@@ -17,7 +17,7 @@ struct AppLeftoverItem: Identifiable, Hashable {
         ByteFormat.string(sizeBytes)
     }
 
-    enum LeftoverCategory: String, CaseIterable {
+    enum LeftoverCategory: String, CaseIterable, Sendable {
         case appBundle = "Main Application (.app)"
         case appSupport = "Application Support"
         case caches = "Caches & WebKit"
@@ -56,7 +56,7 @@ struct AppLeftoverItem: Identifiable, Hashable {
 }
 
 /// Information model for an installed application and all its root files.
-struct InstalledAppInfo: Identifiable {
+struct InstalledAppInfo: Identifiable, @unchecked Sendable {
     let id = UUID()
     let name: String
     let bundleID: String

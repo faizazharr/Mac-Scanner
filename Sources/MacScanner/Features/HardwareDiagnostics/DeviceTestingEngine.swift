@@ -771,7 +771,7 @@ struct DeadPixelFullscreenView: View {
     private func scheduleHUDAutoHide() {
         hideHUDTimer?.invalidate()
         hideHUDTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
-            Task { @MainActor in
+            DispatchQueue.main.async {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     showHUD = false
                 }
