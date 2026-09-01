@@ -11,8 +11,8 @@ struct AppUninstallerView: View {
     @State private var sortOption: AppSortOption = .size
 
     enum AppSortOption: String, CaseIterable {
-        case size = "Ukuran"
-        case name = "Nama"
+        case size = "Size"
+        case name = "Name"
     }
 
     var filteredApps: [InstalledAppInfo] {
@@ -40,7 +40,7 @@ struct AppUninstallerView: View {
                         Text("App Uninstaller")
                             .font(.title3)
                             .fontWeight(.bold)
-                        Text("\(engine.installedApps.count) Aplikasi Terinstal")
+                        Text("\(engine.installedApps.count) Installed Applications")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -65,7 +65,7 @@ struct AppUninstallerView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        TextField("Cari aplikasi…", text: $engine.searchQuery)
+                        TextField("Search applications…", text: $engine.searchQuery)
                             .textFieldStyle(.plain)
                             .font(.caption)
                     }
@@ -74,7 +74,7 @@ struct AppUninstallerView: View {
                     .background(Color.secondary.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                    Picker("Urutkan", selection: $sortOption) {
+                    Picker("Sort", selection: $sortOption) {
                         ForEach(AppSortOption.allCases, id: \.self) {
                             Text($0.rawValue).tag($0)
                         }
@@ -90,7 +90,7 @@ struct AppUninstallerView: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        ProgressView("Memindai ukuran & file sisa…")
+                        ProgressView("Scanning sizes & leftovers…")
                             .font(.caption)
                         Spacer()
                     }
@@ -108,107 +108,144 @@ struct AppUninstallerView: View {
                             Image(nsImage: app.icon)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
-                                .frame(width: 28, height: 28)
+                                .frame(width: 24, height: 24)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
+                                HStack(spacing: 4) {
                                     Text(app.name)
                                         .font(.subheadline)
-                                        .fontWeight(engine.selectedApp?.id == app.id ? .bold : .medium)
+                                        .fontWeight(.medium)
                                         .lineLimit(1)
 
                                     if app.isSystemApp {
-                                        Pill(text: "System", color: .secondary)
+                                        Text("System")
+                                            .font(.system(size: 9))
+                                            .padding(.horizontal, 4)
+                                            .padding(.vertical, 1)
+                                            .background(Color.secondary.opacity(0.2))
+                                            .clipShape(Capsule())
                                     }
                                 }
 
-                                Text("v\(app.version)")
+                                Text(app.bundleID)
                                     .font(.system(size: 10))
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
                             }
 
                             Spacer()
 
                             Text(ByteFormat.string(app.totalSizeBytes))
                                 .font(.system(size: 11, design: .monospaced))
-                                .fontWeight(.semibold)
-                                .foregroundStyle(app.totalSizeBytes >= 1024 * 1024 * 1024 ? .blue : .secondary)
+                                .foregroundStyle(.secondary)
                         }
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
                         .tag(app.id)
-                        .onTapGesture {
-                            engine.selectApp(app)
-                        }
+                        .padding(.vertical, 2)
                     }
                     .listStyle(.sidebar)
                 }
             }
-            .frame(width: 310)
-            .background(Color(nsColor: .controlBackgroundColor).opacity(0.4))
+            .frame(width: 280)
+            .background(Color.primary.opacity(0.02))
 
-            Divider()
+            Divider().opacity(0.5)
 
-            // Right Pane: Deep Root Breakdown & Clean
+            // Right Pane: Deep Leftover Breakdown & Actions
             if let app = engine.selectedApp {
                 VStack(alignment: .leading, spacing: 16) {
                     // Header Bar
-                    HStack(spacing: 14) {
+                    HStack(spacing: 16) {
                         Image(nsImage: app.icon)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 52, height: 52)
+                            .shadow(radius: 2)
 
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 8) {
                                 Text(app.name)
                                     .font(.title2)
                                     .fontWeight(.bold)
-                                Pill(text: "v\(app.version)", color: .blue)
+
                                 if app.isSystemApp {
-                                    Pill(text: "Dilindungi Sistem", color: .orange)
+                                    Pill(text: "System Protected", color: .orange)
                                 }
                             }
 
-                            Text(app.bundleID)
-                                .font(.system(size: 11, design: .monospaced))
+                            Text("Bundle ID: \(app.bundleID) • Version: \(app.version)")
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
 
-                            Text("Total Ukuran Bersih: \(ByteFormat.string(app.totalSizeBytes)) • Terpilih: \(ByteFormat.string(app.selectedSizeBytes))")
-                                .font(.caption2)
-                                .foregroundStyle(.primary)
+                            Text(app.bundleURL.path)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
                         }
 
                         Spacer()
 
-                        if !app.isSystemApp {
-                            Button {
-                                showConfirmDialog = true
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "trash.fill")
-                                    Text("Uninstall Bersih (\(ByteFormat.string(app.selectedSizeBytes)))")
-                                }
-                                .fontWeight(.semibold)
+                        Button {
+                            showConfirmDialog = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "trash.fill")
+                                Text("Uninstall App")
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.red)
-                            .disabled(app.selectedItemsCount == 0 || engine.isDeleting)
+                            .fontWeight(.semibold)
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                        .controlSize(.regular)
+                        .disabled(app.selectedItemsCount == 0 || engine.isDeleting)
                     }
-                    .padding(16)
+                    .padding(14)
+                    .glassCard()
+
+                    // Selection Summary Bar
+                    HStack(spacing: 20) {
+                        HStack(spacing: 6) {
+                            Text("Total Size:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(ByteFormat.string(app.totalSizeBytes))
+                                .font(.caption.bold())
+                        }
+
+                        HStack(spacing: 6) {
+                            Text("Selected for Trash:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("\(ByteFormat.string(app.selectedSizeBytes)) (\(app.selectedItemsCount) items)")
+                                .font(.caption.bold())
+                                .foregroundStyle(.blue)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            FileActions.reveal(app.bundleURL)
+                        } label: {
+                            Label("Reveal App in Finder", systemImage: "arrow.up.forward.app")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.blue)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
                     .glassCard()
 
                     // Selection Control Toolbar
                     HStack {
-                        Text("Akar & Sisa File Ditemukan (\(app.items.count) Komponen):")
+                        Text("Root & Leftover Files Found (\(app.items.count) Components):")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(.secondary)
 
                         Spacer()
 
-                        Button("Pilih Semua") {
+                        Button("Select All") {
                             engine.selectAllItems(true)
                         }
                         .buttonStyle(.plain)
@@ -217,7 +254,7 @@ struct AppUninstallerView: View {
 
                         Text("•").foregroundStyle(.secondary)
 
-                        Button("Batal Pilih") {
+                        Button("Deselect All") {
                             engine.selectAllItems(false)
                         }
                         .buttonStyle(.plain)
@@ -230,7 +267,7 @@ struct AppUninstallerView: View {
                         Spacer()
                         HStack {
                             Spacer()
-                            ProgressView("Memindai direktori Library & Sandbox…")
+                            ProgressView("Scanning Library & Sandbox directories…")
                             Spacer()
                         }
                         Spacer()
@@ -240,7 +277,7 @@ struct AppUninstallerView: View {
                             Image(systemName: "checkmark.seal.fill")
                                 .font(.largeTitle)
                                 .foregroundStyle(.green)
-                            Text("Tidak ada file sisa tersembunyi.")
+                            Text("No hidden leftover files found.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -294,7 +331,7 @@ struct AppUninstallerView: View {
                                                 .foregroundStyle(.secondary)
                                         }
                                         .buttonStyle(.plain)
-                                        .help("Buka di Finder")
+                                        .help("Reveal in Finder")
                                     }
                                     .padding(10)
                                     .glassCard(tint: item.isSelected ? item.category.color : .secondary, opacity: item.isSelected ? 0.08 : 0.03)
@@ -311,7 +348,7 @@ struct AppUninstallerView: View {
                     Image(systemName: "trash.circle")
                         .font(.system(size: 48))
                         .foregroundStyle(.secondary.opacity(0.5))
-                    Text("Pilih aplikasi dari daftar di sebelah kiri untuk melihat rincian akar filenya.")
+                    Text("Select an application from the list on the left to inspect its root files.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -319,16 +356,16 @@ struct AppUninstallerView: View {
             }
         }
         .confirmationDialog(
-            "Copot & Pindahkan ke Trash?",
+            "Uninstall & Move to Trash?",
             isPresented: $showConfirmDialog,
             titleVisibility: .visible
         ) {
-            Button("Pindahkan \(engine.selectedApp?.name ?? "Aplikasi") ke Trash", role: .destructive) {
+            Button("Move \(engine.selectedApp?.name ?? "App") to Trash", role: .destructive) {
                 engine.uninstallSelectedApp()
             }
-            Button("Batal", role: .cancel) { }
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Seluruh file utama beserta folder Application Support, Caches, dan Preferences yang dipilih akan dipindahkan ke Trash. Anda tetap dapat mengembalikannya dari Keranjang Sampah macOS jika diperlukan.")
+            Text("All selected main application bundles, Application Support, Caches, and Preferences will be safely moved to the Trash. You can restore them anytime from macOS Trash if needed.")
         }
     }
 }

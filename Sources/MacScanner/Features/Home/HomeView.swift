@@ -245,7 +245,7 @@ struct HomeView: View {
 
             NavCard(
                 title: "Hardware Diagnostics",
-                subtitle: "Uji menyeluruh fungsionalitas layar dead pixel, speaker stereo L/R, mikrofon, keyboard, dan trackpad.",
+                subtitle: "Full diagnostic suite for screen dead pixels, stereo L/R speakers, microphone, keyboard, and trackpad.",
                 icon: "wrench.and.screwdriver.fill",
                 badge: "Device Test",
                 color: .teal

@@ -139,69 +139,69 @@ enum AppInspector {
     static func friendlyInfo(for raw: String) -> (displayName: String, description: String, icon: String, color: Color) {
         let lower = raw.lowercased()
         if lower == "du" || lower.hasPrefix("du ") {
-            return ("Disk Usage Scanner (du)", "Proses bawaan macOS yang menghitung ukuran berkas dan folder di disk saat pemindaian.", "externaldrive.badge.timemachine", .blue)
+            return ("Disk Usage Scanner (du)", "Native macOS process calculating file and folder sizes on disk during scans.", "externaldrive.badge.timemachine", .blue)
         }
         if lower == "find" || lower.hasPrefix("find ") {
-            return ("File Search Indexer (find)", "Proses bawaan macOS yang mencari berkas atau direktori di dalam disk.", "doc.text.magnifyingglass", .teal)
+            return ("File Search Indexer (find)", "Native macOS process locating files and directory structures on disk.", "doc.text.magnifyingglass", .teal)
         }
         if lower == "mds" || lower == "mdworker" || lower.contains("mdworker") || lower == "mds_stores" {
-            return ("Spotlight Search Indexer (mds)", "Layanan latar belakang macOS yang mengindeks file untuk pencarian cepat Spotlight.", "sparkle.magnifyingglass", .indigo)
+            return ("Spotlight Search Indexer (mds)", "Native macOS background indexing daemon for Spotlight search queries.", "sparkle.magnifyingglass", .indigo)
         }
         if lower == "cloudd" || lower == "bird" {
-            return ("iCloud Drive Sync (cloudd)", "Layanan latar belakang macOS untuk sinkronisasi berkas iCloud Drive.", "icloud.fill", .blue)
+            return ("iCloud Drive Sync (cloudd)", "macOS background daemon synchronizing files with iCloud Drive.", "icloud.fill", .blue)
         }
         if lower == "syspolicyd" || lower == "trustd" {
-            return ("Gatekeeper Security (syspolicyd)", "Layanan keamanan macOS yang memverifikasi integritas dan sertifikat aplikasi.", "shield.checkerboard", .green)
+            return ("Gatekeeper Security (syspolicyd)", "macOS security subsystem verifying application codesigning and integrity.", "shield.checkerboard", .green)
         }
         if lower == "kernel_task" {
-            return ("macOS Core Kernel (kernel_task)", "Inti sistem operasi macOS yang mengelola RAM, CPU, dan manajemen suhu termal.", "cpu.fill", .gray)
+            return ("macOS Core Kernel (kernel_task)", "Core macOS operating system managing RAM, CPU scheduler, and thermal regulation.", "cpu.fill", .gray)
         }
         if lower == "windowserver" {
-            return ("macOS Graphics Compositor (WindowServer)", "Layanan grafis macOS yang menggambar seluruh jendela, efek blur, dan layar Mac.", "macwindow.on.rectangle", .purple)
+            return ("macOS Graphics Compositor (WindowServer)", "macOS display compositor rendering windows, blur effects, and external displays.", "macwindow.on.rectangle", .purple)
         }
         if lower == "git" {
-            return ("Git Version Control (git)", "Alat pelacak versi kode sumber pada proyek developer.", "arrow.triangle.branch", .orange)
+            return ("Git Version Control (git)", "Developer tool tracking source code changes and repository history.", "arrow.triangle.branch", .orange)
         }
         if lower.contains("antigravity") {
-            return ("Google Antigravity Assistant", "Asisten pemrograman AI yang sedang aktif menjalankan tugas di Mac Anda.", "sparkles", .purple)
+            return ("Google Antigravity Assistant", "AI pair programming assistant currently running tasks on your Mac.", "sparkles", .purple)
         }
         if lower.contains("chrome") {
-            return ("Google Chrome", "Browser web Google Chrome beserta tab dan ekstensinya.", "globe", .blue)
+            return ("Google Chrome", "Google Chrome web browser, active web tabs, and extensions.", "globe", .blue)
         }
         if lower.contains("figma") {
-            return ("Figma Desktop", "Aplikasi desain UI/UX berbasis cloud beserta tab kanvas dan render engine.", "paintbrush.pointed.fill", .pink)
+            return ("Figma Desktop", "Cloud-based UI/UX vector design editor and canvas rendering engine.", "paintbrush.pointed.fill", .pink)
         }
         if lower.contains("xcode") {
-            return ("Xcode IDE", "Lingkungan pengembangan aplikasi Apple (compiler, simulator, dan indexer).", "hammer.fill", .cyan)
+            return ("Xcode IDE", "Apple integrated development environment (compilers, simulators, and indexers).", "hammer.fill", .cyan)
         }
         if lower.contains("arc") {
-            return ("Arc Browser", "Browser web Arc beserta tab dan pengelola ruang kerja.", "globe", .purple)
+            return ("Arc Browser", "Arc web browser workspaces, active tabs, and extensions.", "globe", .purple)
         }
         if lower.contains("brave") {
-            return ("Brave Browser", "Browser web Brave yang berfokus pada privasi.", "globe", .orange)
+            return ("Brave Browser", "Privacy-focused Brave web browser and shield engine.", "globe", .orange)
         }
         if lower.contains("safari") || lower.contains("webcontent") {
-            return ("Safari Web Browser", "Browser web bawaan Apple macOS beserta konten tab aktif.", "safari.fill", .blue)
+            return ("Safari Web Browser", "Apple native WebKit browser and active tab contents.", "safari.fill", .blue)
         }
         if lower.contains("spotify") {
-            return ("Spotify Music", "Aplikasi pemutar musik dan podcast streaming.", "music.note", .green)
+            return ("Spotify Music", "Streaming music player and podcast audio daemon.", "music.note", .green)
         }
         if lower.contains("slack") {
-            return ("Slack", "Aplikasi komunikasi dan kolaborasi tim kerja.", "bubble.left.and.bubble.right.fill", .yellow)
+            return ("Slack", "Team collaboration and workplace messaging client.", "bubble.left.and.bubble.right.fill", .yellow)
         }
         if lower.contains("photoshop") {
-            return ("Adobe Photoshop", "Aplikasi edit grafis dan manipulasi foto raster.", "paintbrush.pointed.fill", .blue)
+            return ("Adobe Photoshop", "Professional raster graphics editor and image manipulation suite.", "paintbrush.pointed.fill", .blue)
         }
         if lower.contains("premiere") {
-            return ("Adobe Premiere Pro", "Aplikasi penyunting video profesional.", "film.stack.fill", .purple)
+            return ("Adobe Premiere Pro", "Non-linear professional video editing suite.", "film.stack.fill", .purple)
         }
         if lower.contains("after effects") {
-            return ("Adobe After Effects", "Aplikasi efek visual dan animasi gerak.", "sparkles.tv.fill", .purple)
+            return ("Adobe After Effects", "Digital visual effects, motion graphics, and compositing application.", "sparkles.tv.fill", .purple)
         }
         if lower.contains("docker") {
-            return ("Docker Desktop", "Platform virtualisasi container dan development runtime.", "shippingbox.fill", .blue)
+            return ("Docker Desktop", "Container virtualization engine and local development runtime.", "shippingbox.fill", .blue)
         }
-        return (raw, "Aplikasi pengguna atau proses latar belakang macOS.", "app.dashed", .accentColor)
+        return (raw, "User application or native macOS background process.", "app.dashed", .accentColor)
     }
 
     private static func canonicalName(for raw: String) -> String {

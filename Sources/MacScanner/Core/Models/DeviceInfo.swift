@@ -70,14 +70,14 @@ enum DeviceInfoProvider {
         let phyModes = field(wifiData, "Supported PHY Modes") ?? "802.11 a/b/g/n/ac/ax"
         let wifiModel = phyModes.contains("ax") ? "Wi-Fi 6E (802.11ax)" : (phyModes.contains("ac") ? "Wi-Fi 5 (802.11ac)" : "AirPort Extreme")
         let rawWifiStatus = field(wifiData, "Status") ?? (wifiInstalled ? "Ready" : "Not Detected")
-        let wifiStatusLabel = rawWifiStatus == "Connected" ? "Terhubung & Normal" : (wifiInstalled ? "Terpasang & Siap (Normal)" : "Tidak Terdeteksi / Error")
+        let wifiStatusLabel = rawWifiStatus == "Connected" ? "Connected & Normal" : (wifiInstalled ? "Installed & Ready (Normal)" : "Not Detected / Error")
 
         // Parse Bluetooth
         let btInstalled = btData.contains("Bluetooth Controller:")
         let btChip = field(btData, "Chipset") ?? "Apple Bluetooth Controller"
         let btTransport = field(btData, "Transport") ?? "PCIe"
         let btModel = "\(btChip) (\(btTransport))"
-        let btStatusLabel = btInstalled ? "Terpasang & Normal" : "Tidak Terdeteksi / Error"
+        let btStatusLabel = btInstalled ? "Installed & Normal" : "Not Detected / Error"
 
         // Parse Audio / Speakers
         let audioInstalled = audioData.contains("MacBook") || audioData.contains("Speakers") || audioData.contains("Output Channels")
@@ -85,7 +85,7 @@ enum DeviceInfoProvider {
         let sampleRate = field(audioData, "Current SampleRate") ?? "48000"
         let sampleRateKHz = (Int(sampleRate) ?? 48000) / 1000
         let speakerModel = "\(speakerName) (\(sampleRateKHz) kHz Stereo)"
-        let speakerStatusLabel = audioInstalled ? "Terpasang & Normal" : "Tidak Terdeteksi / Error"
+        let speakerStatusLabel = audioInstalled ? "Installed & Normal" : "Not Detected / Error"
 
         return DeviceInfo(
             modelName: field(hardware, "Model Name") ?? "Unknown Mac",

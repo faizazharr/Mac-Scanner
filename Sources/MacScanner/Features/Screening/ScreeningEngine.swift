@@ -20,9 +20,9 @@ struct AppUsageScreeningItem: Identifiable {
     let explanation: String
 
     enum BatteryImpactLevel: String {
-        case low = "Hemat Energi"
-        case moderate = "Sedang"
-        case high = "Tinggi"
+        case low = "Energy Efficient"
+        case moderate = "Moderate"
+        case high = "High"
 
         var color: Color {
             switch self {
@@ -132,7 +132,7 @@ final class ScreeningEngine: ObservableObject {
     nonisolated private static func getPowerSourceInfo() -> (Bool, String) {
         let output = Shell.run("/usr/bin/pmset", ["-g", "batt"])
         let isAC = output.contains("AC Power") || output.contains("charged")
-        let label = isAC ? "Tersambung Adaptor (AC)" : "Baterai (Discharging)"
+        let label = isAC ? "Connected to AC Power" : "On Battery Power"
         return (isAC, label)
     }
 
@@ -207,22 +207,22 @@ final class ScreeningEngine: ObservableObject {
 
         if lower.contains("xcode") || lower.contains("simulator") || lower.contains("after effects") || lower.contains("premiere") || lower.contains("blender") {
             let hours = isRunning ? 4.5 : 1.2
-            return (hours, .high, 28.0, "Kompilasi kode atau grafis berat memicu beban CPU/GPU intensif.")
+            return (hours, .high, 28.0, "Heavy code compilation or 3D/video rendering under load.")
         }
         if lower.contains("chrome") || lower.contains("arc") || lower.contains("brave") || lower.contains("edge") {
             let hours = isRunning ? 5.0 : 2.0
-            return (hours, .moderate, 18.0, "Banyak tab latar belakang dan proses renderer multi-core.")
+            return (hours, .moderate, 18.0, "Multiple background web tabs and multi-core renderer processes.")
         }
         if lower.contains("figma") || lower.contains("photoshop") || lower.contains("illustrator") {
             let hours = isRunning ? 3.5 : 1.0
-            return (hours, .moderate, 15.0, "Render kanvas GPU dan akselerasi grafis WebGL.")
+            return (hours, .moderate, 15.0, "Active GPU canvas rendering and WebGL graphics acceleration.")
         }
         if lower.contains("spotify") || lower.contains("music") || lower.contains("slack") || lower.contains("whatsapp") || lower.contains("telegram") {
             let hours = isRunning ? 4.0 : 1.5
-            return (hours, .low, 6.0, "Aplikasi streaming atau perpesanan hemat daya di latar belakang.")
+            return (hours, .low, 6.0, "Low-power background media streaming or messaging.")
         }
 
         let hours = isRunning ? 2.0 : 0.4
-        return (hours, .low, 3.0, "Aplikasi utilitas ringan dengan konsumsi daya minimal.")
+        return (hours, .low, 3.0, "Lightweight utility with minimal power consumption.")
     }
 }

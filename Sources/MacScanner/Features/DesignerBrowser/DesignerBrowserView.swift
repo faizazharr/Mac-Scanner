@@ -10,9 +10,9 @@ struct DesignerBrowserView: View {
     @ObservedObject var vm: DesignerBrowserViewModel
 
     private enum Mode: String, CaseIterable {
-        case overview = "Diagnosis & Solusi"
+        case overview = "Diagnostics & Insights"
         case designCaches = "Design Caches"
-        case browsers = "Browser & Ekstensi"
+        case browsers = "Browsers & Extensions"
     }
 
     @State private var selectedMode: Mode = .overview
@@ -32,7 +32,7 @@ struct DesignerBrowserView: View {
                     ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 380)
+                .frame(maxWidth: 420)
 
                 // Sub-view Content
                 switch selectedMode {
@@ -47,34 +47,34 @@ struct DesignerBrowserView: View {
             .padding(20)
         }
         .confirmationDialog(
-            "Bersihkan \(pendingCleanURL?.title ?? "Cache")?",
+            "Clean \(pendingCleanURL?.title ?? "Cache")?",
             isPresented: Binding(
                 get: { pendingCleanURL != nil },
                 set: { if !$0 { pendingCleanURL = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Pindahkan ke Trash", role: .destructive) {
+            Button("Move to Trash", role: .destructive) {
                 if let target = pendingCleanURL {
                     vm.send(.cleanDesignCache(target.url))
                 }
                 pendingCleanURL = nil
             }
-            Button("Batal", role: .cancel) { pendingCleanURL = nil }
+            Button("Cancel", role: .cancel) { pendingCleanURL = nil }
         } message: {
-            Text("File cache akan dipindahkan ke Trash. Aplikasi akan mengunduh atau menyinkronkan ulang data yang diperlukan secara otomatis.")
+            Text("Cache files will be safely moved to Trash. Applications will automatically re-download or recreate required assets as needed.")
         }
         .confirmationDialog(
-            "Bersihkan Seluruh Cache Desain (\(ByteFormat.string(vm.totalDesignCacheBytes)))?",
+            "Clean All Design Caches (\(ByteFormat.string(vm.totalDesignCacheBytes)))?",
             isPresented: $showCleanAllDesignConfirm,
             titleVisibility: .visible
         ) {
-            Button("Bersihkan Semua Cache Aman", role: .destructive) {
+            Button("Clean All Safe Caches", role: .destructive) {
                 vm.send(.cleanAllSafeDesignCaches)
             }
-            Button("Batal", role: .cancel) { }
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Ini akan memindahkan seluruh cache Figma, Adobe, dan Sketch yang aman ke Trash.")
+            Text("This will move all safe Figma, Adobe, and Sketch temporary caches to the Trash.")
         }
         .onAppear {
             vm.send(.appearIfNeeded)
@@ -103,7 +103,7 @@ struct DesignerBrowserView: View {
                     Text("Designer & Browser Screener")
                         .font(.title3)
                         .fontWeight(.bold)
-                    Text("Diagnosis awam penyebab Mac lambat, cache aplikasi kreatif, dan beban ekstensi browser.")
+                    Text("Plain-language diagnostics for creative design app caches and browser extension overhead.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -113,13 +113,13 @@ struct DesignerBrowserView: View {
 
             if vm.isScanning {
                 ProgressView().controlSize(.small)
-                Text("Memindai…").font(.caption).foregroundStyle(.secondary)
+                Text("Scanning…").font(.caption).foregroundStyle(.secondary)
             }
 
             Button {
                 vm.send(.rescan)
             } label: {
-                Label("Pindai Ulang", systemImage: "arrow.clockwise")
+                Label("Rescan", systemImage: "arrow.clockwise")
                     .font(.caption)
             }
             .buttonStyle(.bordered)
@@ -132,27 +132,27 @@ struct DesignerBrowserView: View {
     private var metricsHub: some View {
         HStack(spacing: 12) {
             metricCard(
-                title: "Cache Aplikasi Desain",
+                title: "Design Apps Cache",
                 value: ByteFormat.string(vm.totalDesignCacheBytes),
-                subtitle: "\(vm.designCaches.count) target terdeteksi",
+                subtitle: "\(vm.designCaches.count) target locations",
                 icon: "paintbrush.fill",
                 color: .pink
             )
 
             metricCard(
-                title: "Cache Web Peramban",
+                title: "Browsers Cache",
                 value: ByteFormat.string(vm.totalBrowserCacheBytes),
-                subtitle: "Dari \(vm.browsers.count) browser",
+                subtitle: "From \(vm.browsers.count) browsers",
                 icon: "globe",
                 color: .blue
             )
 
             metricCard(
-                title: "Ekstensi Browser Terpasang",
-                value: "\(vm.totalExtensionsCount) Ekstensi",
-                subtitle: "Potensi konsumsi RAM",
+                title: "Total Browser Extensions",
+                value: "\(vm.totalExtensionsCount) Extensions",
+                subtitle: "Across all browsers",
                 icon: "puzzlepiece.extension.fill",
-                color: .orange
+                color: .purple
             )
         }
     }
@@ -181,70 +181,59 @@ struct DesignerBrowserView: View {
         .glassCard(tint: color, opacity: 0.08)
     }
 
-    // MARK: - Overview Section (Plain Language Diagnostics)
+    // MARK: - Overview Insights Section
 
     private var overviewSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label("💡 Kenapa Mac Saya Terasa Berat / Lag?", systemImage: "lightbulb.fill")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.orange)
-                Spacer()
-            }
+            // Diagnostic Plain-Language Insights
+            Text("Smart Diagnostic Insights")
+                .font(.headline)
+                .fontWeight(.bold)
 
             ForEach(vm.insights) { insight in
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(insight.color.opacity(0.18))
-                            .frame(width: 38, height: 38)
+                            .fill(insight.color.opacity(0.15))
+                            .frame(width: 36, height: 36)
                         Image(systemName: insight.icon)
-                            .font(.callout.bold())
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(insight.color)
                     }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(insight.title)
-                                .font(.subheadline)
-                                .fontWeight(.bold)
-                            Spacer()
-                        }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(insight.title)
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
+
                         Text(insight.summary)
                             .font(.caption)
                             .fontWeight(.medium)
-                            .foregroundStyle(.primary)
-                        Text(insight.explanation)
-                            .font(.caption)
                             .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(insight.explanation)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 1)
                     }
 
-                    if let actionTitle = insight.actionTitle {
-                        VStack(alignment: .trailing, spacing: 6) {
-                            Button(actionTitle) {
-                                if let browser = insight.browserName {
-                                    DesignerBrowserScanner.openBrowserExtensionPage(browserName: browser)
-                                } else if actionTitle.contains("Bersihkan"), let targetURL = insight.targetURL {
-                                    pendingCleanURL = (targetURL, insight.title)
-                                } else if let targetURL = insight.targetURL {
-                                    NSWorkspace.shared.activateFileViewerSelecting([targetURL])
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                            .tint(insight.color)
+                    Spacer()
 
-                            if insight.browserName != nil {
-                                Button("Lihat Daftar Ekstensi") {
-                                    withAnimation { selectedMode = .browsers }
-                                }
-                                .font(.caption2)
-                                .buttonStyle(.plain)
-                                .foregroundStyle(Color.accentColor)
+                    if let action = insight.actionTitle {
+                        Button {
+                            if let bName = insight.browserName {
+                                DesignerBrowserScanner.openBrowserExtensionPage(browserName: bName)
+                            } else if let target = insight.targetURL {
+                                vm.send(.cleanDesignCache(target))
                             }
+                        } label: {
+                            Text(action)
+                                .font(.caption.bold())
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(insight.color)
+                        .controlSize(.small)
                     }
                 }
                 .padding(14)
@@ -258,16 +247,16 @@ struct DesignerBrowserView: View {
 
     private var designerTipsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Tips Mengoptimalkan Mac untuk Desain & Browser", systemImage: "sparkles")
+            Label("Mac Optimization Tips for Designers & Creators", systemImage: "sparkles")
                 .font(.subheadline)
                 .fontWeight(.bold)
                 .foregroundStyle(.purple)
 
             VStack(alignment: .leading, spacing: 4) {
-                tipRow("1. Tutup tab file Figma / Photoshop yang sudah tidak diedit agar RAM tidak terikat.")
-                tipRow("2. Hindari menggunakan lebih dari satu extension ad-blocker sekaligus di browser.")
-                tipRow("3. Bersihkan Adobe Media Cache secara berkala setelah menyelesaikan proyek video/motion.")
-                tipRow("4. Matikan extension browser screen-recorder / video downloader saat tidak digunakan.")
+                tipRow("1. Close unused Figma / Photoshop project tabs so RAM is released to macOS.")
+                tipRow("2. Avoid running multiple redundant ad-blocker extensions simultaneously.")
+                tipRow("3. Periodically purge Adobe Media Cache after completing heavy motion/video edits.")
+                tipRow("4. Disable browser screen-recording or video downloading extensions when not actively in use.")
             }
         }
         .padding(14)
@@ -292,10 +281,10 @@ struct DesignerBrowserView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Target Cache Aplikasi Desain Terpasang")
+                    Text("Installed Design Apps Cache Targets")
                         .font(.headline)
                         .fontWeight(.bold)
-                    Text("Cache kanvas, preview frame render, dan autosave yang dapat dibersihkan.")
+                    Text("Canvas caches, rendered frame previews, and autosave scratch files.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -306,7 +295,7 @@ struct DesignerBrowserView: View {
                     Button {
                         showCleanAllDesignConfirm = true
                     } label: {
-                        Label("Bersihkan Semua (\(ByteFormat.string(vm.totalDesignCacheBytes)))", systemImage: "trash.fill")
+                        Label("Clean All (\(ByteFormat.string(vm.totalDesignCacheBytes)))", systemImage: "trash.fill")
                             .font(.caption)
                     }
                     .buttonStyle(.borderedProminent)
@@ -334,7 +323,7 @@ struct DesignerBrowserView: View {
                                     .fontWeight(.bold)
                                 Pill(text: cache.category, color: .pink)
                                 if cache.safeToClean {
-                                    Pill(text: "Aman Dibersihkan", color: .green, icon: "checkmark.shield.fill")
+                                    Pill(text: "Safe to Clean", color: .green, icon: "checkmark.shield.fill")
                                 }
                             }
                             Text(cache.explanation)
@@ -367,7 +356,7 @@ struct DesignerBrowserView: View {
                                 Button {
                                     pendingCleanURL = (cache.path, cache.appName)
                                 } label: {
-                                    Label("Bersihkan", systemImage: "trash")
+                                    Label("Clean", systemImage: "trash")
                                         .font(.caption2)
                                 }
                                 .buttonStyle(.borderedProminent)
@@ -384,7 +373,7 @@ struct DesignerBrowserView: View {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.title)
                         .foregroundStyle(.green)
-                    Text("Tidak ada cache desain yang menumpuk.")
+                    Text("No design caches accumulated.")
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
@@ -399,7 +388,7 @@ struct DesignerBrowserView: View {
 
     private var browsersSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Peramban Web & Ekstensi Terpasang")
+            Text("Installed Web Browsers & Extensions")
                 .font(.headline)
                 .fontWeight(.bold)
 
@@ -454,7 +443,7 @@ struct DesignerBrowserView: View {
                     Text(browser.name)
                         .font(.headline)
                         .fontWeight(.bold)
-                    Text("Cache web: \(ByteFormat.string(browser.cacheBytes)) • \(browser.extensionsCount) Ekstensi terpasang")
+                    Text("Web cache: \(ByteFormat.string(browser.cacheBytes)) • \(browser.extensionsCount) extensions installed")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -465,7 +454,7 @@ struct DesignerBrowserView: View {
                     Button {
                         pendingCleanURL = (cacheURL, "\(browser.name) Cache")
                     } label: {
-                        Label("Bersihkan Cache Web", systemImage: "trash")
+                        Label("Clear Web Cache", systemImage: "trash")
                             .font(.caption)
                     }
                     .buttonStyle(.borderedProminent)
@@ -477,7 +466,7 @@ struct DesignerBrowserView: View {
                     Button {
                         DesignerBrowserScanner.openBrowserExtensionPage(browserName: browser.name)
                     } label: {
-                        Label("Kelola di \(browser.name)", systemImage: "gearshape.fill")
+                        Label("Manage in \(browser.name)", systemImage: "gearshape.fill")
                             .font(.caption)
                     }
                     .buttonStyle(.bordered)
@@ -490,7 +479,7 @@ struct DesignerBrowserView: View {
             // Extension List
             if !browser.extensions.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Daftar Ekstensi / Add-on:")
+                    Text("Extensions / Add-ons List:")
                         .font(.subheadline)
                         .fontWeight(.semibold)
 
@@ -512,7 +501,7 @@ struct DesignerBrowserView: View {
                                         .foregroundStyle(.tertiary)
 
                                     if ext.isHeavyCandidate {
-                                        Pill(text: "Potensi Berat", color: .orange, icon: "flame.fill")
+                                        Pill(text: "High Overhead", color: .orange, icon: "flame.fill")
                                     }
                                 }
                                 Text(ext.description)
@@ -527,7 +516,7 @@ struct DesignerBrowserView: View {
                     }
                 }
             } else {
-                Text("Tidak ada ekstensi yang terpasang pada browser ini.")
+                Text("No extensions installed on this browser.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 10)

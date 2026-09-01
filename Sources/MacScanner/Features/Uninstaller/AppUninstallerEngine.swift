@@ -339,7 +339,7 @@ final class AppUninstallerEngine: ObservableObject {
               !app.bundleID.localizedCaseInsensitiveContains("MacScanner"),
               app.bundleID != (Bundle.main.bundleIdentifier ?? ""),
               !app.bundleURL.path.contains("MacScanner.app") else {
-            ToastManager.shared.show("MacScanner dilindungi dan tidak dapat di-uninstall oleh dirinya sendiri.", icon: "shield.fill", tint: .orange)
+            ToastManager.shared.show("MacScanner is self-protected and cannot uninstall itself.", icon: "shield.fill", tint: .orange)
             return
         }
 
@@ -359,7 +359,7 @@ final class AppUninstallerEngine: ObservableObject {
                 if let next = self.selectedApp {
                     self.selectApp(next)
                 }
-                ToastManager.shared.show("Berhasil mencopot \(appName) (\(ByteFormat.string(finalDeletedBytes)) dipindahkan ke Trash)", icon: "trash.fill", tint: .green)
+                ToastManager.shared.show("Successfully uninstalled \(appName) (\(ByteFormat.string(finalDeletedBytes)) moved to Trash)", icon: "trash.fill", tint: .green)
             }
         }
     }

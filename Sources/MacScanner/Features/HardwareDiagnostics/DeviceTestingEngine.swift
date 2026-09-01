@@ -129,7 +129,7 @@ final class DeviceTestingEngine: ObservableObject {
 
     @Published var pressedKeyCodes: Set<UInt16> = []
     @Published var testedKeyCodes: Set<UInt16> = []
-    @Published var lastKeyPressedInfo: String = "Klik area keyboard lalu ketik tombol atau shortcut apapun..."
+    @Published var lastKeyPressedInfo: String = "Click keyboard area and press any key or shortcut..."
     @Published var detectedShortcutName: String? = nil
     @Published var totalKeystrokes: Int = 0
 
@@ -244,14 +244,14 @@ final class DeviceTestingEngine: ObservableObject {
     }
 
     static let screenColors: [TestColor] = [
-        TestColor(name: "Pure White", color: .white, purpose: "Mendeteksi dead pixel hitam & debu panel."),
-        TestColor(name: "Pure Black", color: .black, purpose: "Mendeteksi stuck pixel terang & kebocoran cahaya (backlight bleed)."),
-        TestColor(name: "Pure Red", color: .red, purpose: "Mendeteksi sub-pixel merah yang mati."),
-        TestColor(name: "Pure Green", color: .green, purpose: "Mendeteksi sub-pixel hijau yang mati."),
-        TestColor(name: "Pure Blue", color: .blue, purpose: "Mendeteksi sub-pixel biru yang mati."),
-        TestColor(name: "50% Neutral Gray", color: NSColor(white: 0.5, alpha: 1.0), purpose: "Mendeteksi keseragaman panel (DSE)."),
-        TestColor(name: "Magenta", color: .magenta, purpose: "Mendeteksi konsistensi warna."),
-        TestColor(name: "Cyan", color: .cyan, purpose: "Mendeteksi konsistensi warna.")
+        TestColor(name: "Pure White", color: .white, purpose: "Detects black dead pixels & panel dust."),
+        TestColor(name: "Pure Black", color: .black, purpose: "Detects bright stuck pixels & backlight bleed."),
+        TestColor(name: "Pure Red", color: .red, purpose: "Detects defective red sub-pixels."),
+        TestColor(name: "Pure Green", color: .green, purpose: "Detects defective green sub-pixels."),
+        TestColor(name: "Pure Blue", color: .blue, purpose: "Detects defective blue sub-pixels."),
+        TestColor(name: "50% Neutral Gray", color: NSColor(white: 0.5, alpha: 1.0), purpose: "Detects panel uniformity and dirty screen effect (DSE)."),
+        TestColor(name: "Magenta", color: .magenta, purpose: "Detects color calibration consistency."),
+        TestColor(name: "Cyan", color: .cyan, purpose: "Detects color calibration consistency.")
     ]
 
     @Published var currentColorIndex = 0
@@ -396,7 +396,7 @@ final class DeviceTestingEngine: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard granted else {
-                    ToastManager.shared.show("Izin mikrofon diperlukan", icon: "mic.slash.fill", tint: .orange)
+                    ToastManager.shared.show("Microphone permission required", icon: "mic.slash.fill", tint: .orange)
                     return
                 }
                 self.beginMicRecording()
@@ -417,7 +417,7 @@ final class DeviceTestingEngine: ObservableObject {
             recorder.isMeteringEnabled = true
             let started = recorder.record(forDuration: 3.0)
             guard started else {
-                ToastManager.shared.show("Tidak dapat memulai rekaman", icon: "mic.slash.fill", tint: .orange)
+                ToastManager.shared.show("Unable to start audio recording", icon: "mic.slash.fill", tint: .orange)
                 return
             }
 
@@ -462,7 +462,7 @@ final class DeviceTestingEngine: ObservableObject {
                     self?.loopbackPlayer = nil
                 }
             }
-            ToastManager.shared.show("Memutar ulang rekaman 3 detik", icon: "waveform", tint: .green)
+            ToastManager.shared.show("Playing back 3-second recording", icon: "waveform", tint: .green)
         } catch {
             // Player failed
         }
@@ -520,7 +520,7 @@ final class DeviceTestingEngine: ObservableObject {
             lastKeyPressedInfo = "⚡ Shortcut: \(shortcut) • KeyCode: \(code)"
         } else {
             detectedShortcutName = nil
-            lastKeyPressedInfo = "Tombol: \(keyName) • Hardware KeyCode: \(code)"
+            lastKeyPressedInfo = "Key: \(keyName) • Hardware KeyCode: \(code)"
         }
     }
 
@@ -572,37 +572,37 @@ final class DeviceTestingEngine: ObservableObject {
         if isCmd {
             if isShift {
                 switch char {
-                case "Z": return "⌘⇧Z (Redo / Ulangi)"
-                case "3": return "⌘⇧3 (Screenshot Seluruh Layar)"
-                case "4": return "⌘⇧4 (Screenshot Area Tertentu)"
-                case "5": return "⌘⇧5 (Screenshot & Rekam Layar)"
-                case "N": return "⌘⇧N (Folder / Jendela Baru)"
+                case "Z": return "⌘⇧Z (Redo)"
+                case "3": return "⌘⇧3 (Fullscreen Screenshot)"
+                case "4": return "⌘⇧4 (Selection Screenshot)"
+                case "5": return "⌘⇧5 (Screenshot & Screen Record)"
+                case "N": return "⌘⇧N (New Folder / Window)"
                 default: return "⌘ ⇧ \(char)"
                 }
             } else if isOpt {
-                if keyCode == 53 { return "⌥⌘ESC (Force Quit Aplikasi)" }
+                if keyCode == 53 { return "⌥⌘ESC (Force Quit Applications)" }
                 return "⌥ ⌘ \(char)"
             } else if isCtrl {
-                if char == "Q" { return "⌃⌘Q (Kunci Layar Mac)" }
-                if char == "F" { return "⌃⌘F (Toggle Layar Penuh)" }
+                if char == "Q" { return "⌃⌘Q (Lock Screen)" }
+                if char == "F" { return "⌃⌘F (Toggle Fullscreen)" }
                 return "⌃ ⌘ \(char)"
             } else {
                 switch char {
-                case "Q": return "⌘Q (Quit Aplikasi — Dicegah)"
-                case "W": return "⌘W (Tutup Jendela — Dicegah)"
-                case "H": return "⌘H (Sembunyikan Aplikasi — Dicegah)"
-                case "M": return "⌘M (Minimize Jendela — Dicegah)"
-                case "C": return "⌘C (Salin / Copy)"
-                case "V": return "⌘V (Tempel / Paste)"
-                case "X": return "⌘X (Potong / Cut)"
-                case "Z": return "⌘Z (Undo / Batalkan)"
-                case "A": return "⌘A (Pilih Semua / Select All)"
-                case "S": return "⌘S (Simpan / Save)"
-                case "F": return "⌘F (Cari / Find)"
-                case "O": return "⌘O (Buka File / Open)"
-                case "P": return "⌘P (Cetak / Print)"
-                case "T": return "⌘T (Tab Baru)"
-                case "R": return "⌘R (Refresh / Muat Ulang)"
+                case "Q": return "⌘Q (Quit Application — Intercepted)"
+                case "W": return "⌘W (Close Window — Intercepted)"
+                case "H": return "⌘H (Hide Application — Intercepted)"
+                case "M": return "⌘M (Minimize Window — Intercepted)"
+                case "C": return "⌘C (Copy)"
+                case "V": return "⌘V (Paste)"
+                case "X": return "⌘X (Cut)"
+                case "Z": return "⌘Z (Undo)"
+                case "A": return "⌘A (Select All)"
+                case "S": return "⌘S (Save)"
+                case "F": return "⌘F (Find)"
+                case "O": return "⌘O (Open File)"
+                case "P": return "⌘P (Print)"
+                case "T": return "⌘T (New Tab)"
+                case "R": return "⌘R (Refresh / Reload)"
                 default:
                     if keyCode == 49 { return "⌘Space (Spotlight Search)" }
                     return "⌘\(char)"
@@ -610,7 +610,7 @@ final class DeviceTestingEngine: ObservableObject {
             }
         }
 
-        if isCtrl && keyCode == 48 { return "⌃Tab (Pindah Tab)" }
+        if isCtrl && keyCode == 48 { return "⌃Tab (Switch Tabs)" }
         if isOpt && keyCode == 49 { return "⌥Space (Alternative Search)" }
 
         var parts: [String] = []
@@ -627,22 +627,22 @@ final class DeviceTestingEngine: ObservableObject {
         case 53: return "ESC"
         case 48: return "Tab"
         case 57: return "Caps Lock"
-        case 56: return "Shift (Kiri)"
-        case 60: return "Shift (Kanan)"
-        case 59: return "Control (Kiri)"
-        case 62: return "Control (Kanan)"
-        case 58: return "Option (Kiri)"
-        case 61: return "Option (Kanan)"
-        case 55: return "Command (Kiri)"
-        case 54: return "Command (Kanan)"
+        case 56: return "Left Shift"
+        case 60: return "Right Shift"
+        case 59: return "Left Control"
+        case 62: return "Right Control"
+        case 58: return "Left Option"
+        case 61: return "Right Option"
+        case 55: return "Left Command"
+        case 54: return "Right Command"
         case 49: return "Spacebar"
         case 36: return "Return / Enter"
         case 51: return "Delete / Backspace"
         case 63: return "Fn / Globe"
-        case 123: return "Panah Kiri (◀)"
-        case 124: return "Panah Kanan (▶)"
-        case 125: return "Panah Bawah (▼)"
-        case 126: return "Panah Atas (▲)"
+        case 123: return "Left Arrow (◀)"
+        case 124: return "Right Arrow (▶)"
+        case 125: return "Down Arrow (▼)"
+        case 126: return "Up Arrow (▲)"
         case 122: return "F1"
         case 120: return "F2"
         case 99: return "F3"
@@ -668,7 +668,7 @@ final class DeviceTestingEngine: ObservableObject {
         testedKeyCodes.removeAll()
         detectedShortcutName = nil
         totalKeystrokes = 0
-        lastKeyPressedInfo = "Matrix di-reset. Ketik tombol atau shortcut apapun untuk menguji..."
+        lastKeyPressedInfo = "Matrix reset. Press any key or shortcut to test..."
     }
 
     // MARK: - 5. Trackpad & Haptic Feedback
@@ -714,7 +714,7 @@ struct DeadPixelFullscreenView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "xmark.circle.fill")
-                                Text("Kembali ke Aplikasi (ESC)")
+                                Text("Exit Fullscreen (ESC)")
                                     .fontWeight(.bold)
                             }
                             .padding(.horizontal, 14)
@@ -727,7 +727,7 @@ struct DeadPixelFullscreenView: View {
                     }
 
                     HStack {
-                        Text("Klik layar / tekan [Spasi] untuk ganti warna • [← / →] geser warna • [ESC] kembali")
+                        Text("Click screen / press [Space] to switch color • [← / →] previous/next • [ESC] exit")
                             .font(.caption)
                             .foregroundStyle(isLight ? .black.opacity(0.6) : .white.opacity(0.6))
                         Spacer()

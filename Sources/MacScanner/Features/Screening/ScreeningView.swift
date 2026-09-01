@@ -12,15 +12,15 @@ struct ScreeningView: View {
     @State private var appFilter: AppFilterOption = .all
 
     enum ChartMetric: String, CaseIterable {
-        case hours = "Jam Layar"
-        case battery = "Dampak Baterai"
-        case size = "Ukuran Disk"
+        case hours = "Screen Time"
+        case battery = "Battery Impact"
+        case size = "Disk Size"
     }
 
     enum AppFilterOption: String, CaseIterable {
-        case all = "Semua"
-        case running = "Sedang Berjalan"
-        case heavy = "Dampak Berat"
+        case all = "All"
+        case running = "Running"
+        case heavy = "Heavy Impact"
     }
 
     var filteredApps: [AppUsageScreeningItem] {
@@ -43,7 +43,7 @@ struct ScreeningView: View {
                 if engine.isLoading && engine.overview == nil {
                     HStack {
                         Spacer()
-                        ProgressView("Mengumpulkan telemetri penggunaan Mac…")
+                        ProgressView("Gathering Mac usage telemetry…")
                         Spacer()
                     }
                     .padding(.vertical, 40)
@@ -74,7 +74,7 @@ struct ScreeningView: View {
     private func usageStatisticsChartSection(_ apps: [AppUsageScreeningItem]) -> some View {
         let chartData = Array(apps.prefix(7))
         let totalHours = chartData.reduce(0.0) { $0 + $1.estimatedDailyHours }
-        let topApp = chartData.first?.name ?? "Tidak ada"
+        let topApp = chartData.first?.name ?? "None"
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center) {
@@ -83,11 +83,11 @@ struct ScreeningView: View {
                         Image(systemName: "chart.bar.fill")
                             .font(.system(size: 12))
                             .foregroundStyle(Color.purple)
-                        Text("Grafik Statistik Pemakaian")
+                        Text("Usage Statistics Chart")
                             .font(.subheadline)
                             .fontWeight(.bold)
                     }
-                    Text("Perbandingan visual durasi layar, dampak daya, dan ukuran disk.")
+                    Text("Visual comparison of screen duration, power impact, and disk footprint.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -96,7 +96,7 @@ struct ScreeningView: View {
 
                 HStack(spacing: 8) {
                     HStack(spacing: 4) {
-                        Text("🏆 Terbanyak:")
+                        Text("🏆 Top App:")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                         Text(topApp)
@@ -121,7 +121,7 @@ struct ScreeningView: View {
                     .background(Color.blue.opacity(0.12))
                     .clipShape(Capsule())
 
-                    Picker("Metrik", selection: $chartMetric) {
+                    Picker("Metric", selection: $chartMetric) {
                         ForEach(ChartMetric.allCases, id: \.self) { m in
                             Text(m.rawValue).tag(m)
                         }
@@ -150,8 +150,8 @@ struct ScreeningView: View {
                     }()
 
                     BarMark(
-                        x: .value("Aplikasi", item.name),
-                        y: .value("Nilai", value)
+                        x: .value("App", item.name),
+                        y: .value("Value", value)
                     )
                     .foregroundStyle(
                         LinearGradient(
@@ -211,7 +211,7 @@ struct ScreeningView: View {
                         .font(.title3)
                         .fontWeight(.bold)
                 }
-                Text("Analisis waktu layar, estimasi jam pakai harian, ukuran disk, dan dampak baterai.")
+                Text("Analyze screen time, daily usage estimations, disk footprint, and battery drain.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -221,7 +221,7 @@ struct ScreeningView: View {
             Button {
                 engine.refreshScreening()
             } label: {
-                Label("Refresh Telemetri", systemImage: "arrow.clockwise")
+                Label("Refresh Telemetry", systemImage: "arrow.clockwise")
                     .font(.caption)
             }
             .buttonStyle(.bordered)
@@ -232,25 +232,25 @@ struct ScreeningView: View {
     private func topMetricsGrid(_ overview: MacScreeningOverview) -> some View {
         HStack(spacing: 12) {
             MetricTileComponent(
-                title: "Waktu Hidup Mac (Uptime)",
+                title: "System Uptime",
                 value: formatUptime(overview.totalUptimeSeconds),
-                subLabel: "Sejak dinyalakan pada \(formattedDate(overview.bootDate))",
+                subLabel: "Since boot on \(formattedDate(overview.bootDate))",
                 icon: "timer",
                 color: .blue
             )
 
             MetricTileComponent(
-                title: "Layar Aktif Hari Ini",
-                value: String(format: "%.1f Jam", overview.estimatedScreenOnHoursToday),
-                subLabel: "Waktu aktif sejak dini hari",
+                title: "Screen Active Today",
+                value: String(format: "%.1f Hours", overview.estimatedScreenOnHoursToday),
+                subLabel: "Active time since midnight",
                 icon: "laptopcomputer.and.ipad",
                 color: .purple
             )
 
             MetricTileComponent(
-                title: "Rata-rata Pemakaian Harian",
-                value: String(format: "%.1f Jam / Hari", overview.estimatedDailyAverageHours),
-                subLabel: "Berdasarkan durasi sesi MacBook",
+                title: "Estimated Daily Average",
+                value: String(format: "%.1f Hours / Day", overview.estimatedDailyAverageHours),
+                subLabel: "Based on active user sessions",
                 icon: "chart.bar.xaxis",
                 color: .teal
             )
@@ -274,21 +274,21 @@ struct ScreeningView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
-                    Text("Status Sumber Daya: \(overview.powerSourceLabel)")
+                    Text("Power Source: \(overview.powerSourceLabel)")
                         .font(.subheadline)
                         .fontWeight(.bold)
 
                     if let health {
-                        Pill(text: "Kesehatan: \(health)%", color: health >= 80 ? .green : .orange)
+                        Pill(text: "Health: \(health)%", color: health >= 80 ? .green : .orange)
                     }
                 }
 
                 if let cycles {
-                    Text("Jumlah Siklus Pengisian Daya: \(cycles) Siklus (\(condition)) • Penggunaan daya dioptimalkan oleh \(deviceVM.device?.chip ?? "Apple Silicon").")
+                    Text("Charge Cycle Count: \(cycles) Cycles (\(condition)) • Power optimized by \(deviceVM.device?.chip ?? "Apple Silicon").")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Baterai dalam kondisi prima dan diatur secara dinamis.")
+                    Text("Battery is in peak condition and dynamically managed.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -304,10 +304,10 @@ struct ScreeningView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Aplikasi yang Sering Digunakan & Dampak Daya")
+                    Text("Frequently Used Apps & Power Impact")
                         .font(.headline)
                         .fontWeight(.bold)
-                    Text("Peringkat estimasi jam pakai harian, ukuran disk, dan konsumsi energi baterai.")
+                    Text("Ranked by estimated daily active hours, disk footprint, and energy consumption.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -327,7 +327,7 @@ struct ScreeningView: View {
                     Image(systemName: "tray.fill")
                         .font(.title2)
                         .foregroundStyle(.secondary)
-                    Text("Tidak ada aplikasi yang cocok dengan filter.")
+                    Text("No applications match the selected filter.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -354,7 +354,7 @@ struct ScreeningView: View {
                                     .foregroundStyle(.primary)
 
                                 if item.isRunning {
-                                    Pill(text: "Sedang Berjalan", color: .green)
+                                    Pill(text: "Running", color: .green)
                                 }
                             }
 
@@ -368,7 +368,7 @@ struct ScreeningView: View {
 
                         // Inline Visual Progress Meter
                         VStack(alignment: .trailing, spacing: 3) {
-                            Text(String(format: "%.1f Jam / Hari", item.estimatedDailyHours))
+                            Text(String(format: "%.1f hrs / day", item.estimatedDailyHours))
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .foregroundStyle(item.isRunning ? Color.purple : Color.blue)
 
@@ -393,7 +393,7 @@ struct ScreeningView: View {
                         // Metrics (Size & Battery)
                         HStack(spacing: 18) {
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text("Ukuran Disk")
+                                Text("Disk Size")
                                     .font(.system(size: 9))
                                     .foregroundStyle(.tertiary)
                                 Text(ByteFormat.string(item.totalSizeBytes))
@@ -403,7 +403,7 @@ struct ScreeningView: View {
                             .frame(width: 70, alignment: .trailing)
 
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text("Dampak Baterai")
+                                Text("Battery Impact")
                                     .font(.system(size: 9))
                                     .foregroundStyle(.tertiary)
                                 HStack(spacing: 4) {
@@ -414,7 +414,7 @@ struct ScreeningView: View {
                                 }
                                 .foregroundStyle(item.batteryImpactLevel.color)
                             }
-                            .frame(width: 95, alignment: .trailing)
+                            .frame(width: 105, alignment: .trailing)
                         }
                     }
                     .padding(12)
@@ -429,9 +429,9 @@ struct ScreeningView: View {
         let days = totalHours / 24
         let hours = totalHours % 24
         if days > 0 {
-            return "\(days) Hari \(hours) Jam"
+            return "\(days)d \(hours)h"
         }
-        return "\(hours) Jam \(Int(seconds) % 3600 / 60) Mnt"
+        return "\(hours)h \(Int(seconds) % 3600 / 60)m"
     }
 
     private func formattedDate(_ date: Date) -> String {

@@ -21,7 +21,7 @@ enum DesignerBrowserScanner {
                 icon: "paintbrush.fill",
                 category: "UI/UX Design",
                 path: caches.appendingPathComponent("com.figma.Desktop"),
-                explanation: "Figma webview engine caches, GPU texture caches, and font render temporary bitmaps. 100% aman dibersihkan tanpa menghapus akun login, draft, atau plugin Figma Anda.",
+                explanation: "Figma webview engine caches, GPU texture caches, and font render temporary bitmaps. 100% safe to clear without affecting your logins, drafts, or Figma plugins.",
                 safeToClean: true
             ),
             DesignAppCacheInfo(
@@ -328,12 +328,12 @@ enum DesignerBrowserScanner {
         if totalDesignCache > 5 * 1024 * 1024 * 1024 { // > 5 GB
             insights.append(
                 DesignerDiagnosticInsight(
-                    title: "Desain & Media Caches Sangat Besar",
-                    summary: "\(ByteFormat.string(totalDesignCache)) sampah cache desain menumpuk di disk Anda.",
-                    explanation: "Aplikasi seperti Adobe Premiere, After Effects, dan Figma menyimpan frame preview dan cache kanvas yang memakan puluhan gigabyte. Menghapus cache ini aman dan akan langsung melegakan kapasitas Mac Anda.",
+                    title: "Oversized Design & Media Caches",
+                    summary: "\(ByteFormat.string(totalDesignCache)) of creative app cache is occupying disk space.",
+                    explanation: "Apps like Adobe Premiere, After Effects, and Figma cache render preview frames and canvas data. Cleaning this cache is safe and immediately reclaims storage.",
                     icon: "paintbrush.pointed.fill",
                     color: .purple,
-                    actionTitle: "Bersihkan Cache Desain",
+                    actionTitle: "Clean Design Caches",
                     targetURL: designCaches.first?.path
                 )
             )
@@ -344,12 +344,12 @@ enum DesignerBrowserScanner {
             if browser.extensionsCount >= 6 {
                 insights.append(
                     DesignerDiagnosticInsight(
-                        title: "\(browser.name) Memiliki \(browser.extensionsCount) Ekstensi Aktif",
-                        summary: "Banyaknya ekstensi browser berjalan di setiap tab dan menyedot memori.",
-                        explanation: "Setiap ekstensi browser (terutama ad-blocker ganda, screen recorder, dan AI assistant) menyuntikkan script ke setiap tab yang Anda buka. Mematikan ekstensi yang jarang digunakan akan langsung meringankan browser Anda.",
+                        title: "\(browser.name) Has \(browser.extensionsCount) Active Extensions",
+                        summary: "Numerous browser extensions inject scripts into every open tab, consuming memory.",
+                        explanation: "Each browser extension adds background processing. Disabling unused extensions improves browser speed and reduces memory usage.",
                         icon: browser.icon,
                         color: browser.tintColor,
-                        actionTitle: "Kelola Ekstensi di \(browser.name)",
+                        actionTitle: "Manage Extensions in \(browser.name)",
                         targetURL: browser.extensionsURL,
                         browserName: browser.name
                     )
@@ -359,12 +359,12 @@ enum DesignerBrowserScanner {
             if browser.cacheBytes > 3 * 1024 * 1024 * 1024 { // > 3 GB
                 insights.append(
                     DesignerDiagnosticInsight(
-                        title: "Cache Web \(browser.name) Mencapai \(ByteFormat.string(browser.cacheBytes))",
-                        summary: "Cache web menumpuk dari gambar dan video beresolusi tinggi yang pernah dibuka.",
-                        explanation: "Menghapus cache web akan membebaskan ruang disk tanpa menghapus password, login, atau bookmark Anda.",
+                        title: "\(browser.name) Web Cache Reached \(ByteFormat.string(browser.cacheBytes))",
+                        summary: "Cached media, high-resolution images, and scripts have accumulated.",
+                        explanation: "Clearing web cache frees up storage without deleting your passwords, logins, or bookmarks.",
                         icon: "globe",
                         color: browser.tintColor,
-                        actionTitle: "Bersihkan Cache Web",
+                        actionTitle: "Clear Web Cache",
                         targetURL: browser.cacheURL
                     )
                 )
@@ -380,9 +380,9 @@ enum DesignerBrowserScanner {
         if let heaviest = runningCreative.max(by: { $0.memoryBytes < $1.memoryBytes }), heaviest.memoryBytes > 2 * 1024 * 1024 * 1024 {
             insights.append(
                 DesignerDiagnosticInsight(
-                    title: "\(heaviest.name) Menggunakan Banyak RAM (\(ByteFormat.string(heaviest.memoryBytes)))",
-                    summary: "Kanvas atau proyek desain yang terbuka sedang memakan memori besar.",
-                    explanation: "Jika Mac terasa agak lag saat zooming atau scrolling kanvas, tutup tab file proyek yang sedang tidak dikerjakan atau restart aplikasi untuk menyegarkan memori.",
+                    title: "\(heaviest.name) High Memory Usage (\(ByteFormat.string(heaviest.memoryBytes)))",
+                    summary: "Open vector canvases or media projects are utilizing substantial RAM.",
+                    explanation: "If zooming or panning feels sluggish, consider closing inactive project tabs or restarting the app to release memory.",
                     icon: "memorychip.fill",
                     color: .orange,
                     actionTitle: nil,
@@ -394,9 +394,9 @@ enum DesignerBrowserScanner {
         if insights.isEmpty {
             insights.append(
                 DesignerDiagnosticInsight(
-                    title: "Kondisi Desain & Browser Optimal",
-                    summary: "Tidak ditemukan penumpukan cache ekstrem maupun ekstensi berlebih.",
-                    explanation: "Aplikasi kreatif dan peramban web Anda berjalan dengan sehat dan efisien.",
+                    title: "Design & Browser Workspaces Optimal",
+                    summary: "No excessive cache accumulation or heavy background extensions detected.",
+                    explanation: "Your creative design apps and web browsers are running efficiently.",
                     icon: "checkmark.seal.fill",
                     color: .green,
                     actionTitle: nil,
@@ -415,19 +415,19 @@ enum DesignerBrowserScanner {
         let lower = browserName.lowercased()
         if lower.contains("chrome") {
             _ = Shell.run("/usr/bin/open", ["-a", "Google Chrome", "chrome://extensions/"])
-            ToastManager.shared.show("Membuka halaman ekstensi di Google Chrome", icon: "puzzlepiece.extension.fill", tint: .blue)
+            ToastManager.shared.show("Opening extensions page in Google Chrome", icon: "puzzlepiece.extension.fill", tint: .blue)
         } else if lower.contains("arc") {
             _ = Shell.run("/usr/bin/open", ["-a", "Arc", "arc://extensions/"])
-            ToastManager.shared.show("Membuka halaman ekstensi di Arc", icon: "puzzlepiece.extension.fill", tint: .purple)
+            ToastManager.shared.show("Opening extensions page in Arc", icon: "puzzlepiece.extension.fill", tint: .purple)
         } else if lower.contains("brave") {
             _ = Shell.run("/usr/bin/open", ["-a", "Brave Browser", "brave://extensions/"])
-            ToastManager.shared.show("Membuka halaman ekstensi di Brave", icon: "puzzlepiece.extension.fill", tint: .orange)
+            ToastManager.shared.show("Opening extensions page in Brave", icon: "puzzlepiece.extension.fill", tint: .orange)
         } else if lower.contains("edge") {
             _ = Shell.run("/usr/bin/open", ["-a", "Microsoft Edge", "edge://extensions/"])
-            ToastManager.shared.show("Membuka halaman ekstensi di Microsoft Edge", icon: "puzzlepiece.extension.fill", tint: .cyan)
+            ToastManager.shared.show("Opening extensions page in Microsoft Edge", icon: "puzzlepiece.extension.fill", tint: .cyan)
         } else if lower.contains("firefox") {
             _ = Shell.run("/usr/bin/open", ["-a", "Firefox", "about:addons"])
-            ToastManager.shared.show("Membuka halaman add-on di Firefox", icon: "puzzlepiece.extension.fill", tint: .red)
+            ToastManager.shared.show("Opening add-ons page in Firefox", icon: "puzzlepiece.extension.fill", tint: .red)
         } else {
             _ = Shell.run("/usr/bin/open", ["https://support.apple.com/guide/safari/safari-extensions-sfri32508/mac"])
         }

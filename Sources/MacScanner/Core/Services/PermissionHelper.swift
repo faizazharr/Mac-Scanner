@@ -21,7 +21,7 @@ enum PermissionHelper {
     static func openFullDiskAccessSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
             NSWorkspace.shared.open(url)
-            ToastManager.shared.show("Membuka System Settings ▸ Full Disk Access", icon: "gearshape.fill", tint: .blue)
+            ToastManager.shared.show("Opening System Settings ▸ Full Disk Access", icon: "gearshape.fill", tint: .blue)
         }
     }
 }
@@ -54,11 +54,11 @@ struct FullDiskAccessModalView: View {
 
             // Titles
             VStack(spacing: 6) {
-                Text("Buka Akses Penuh Disk")
+                Text("Enable Full Disk Access")
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Text("Aktifkan izin Full Disk Access sekali saja di System Settings agar MacScanner dapat memindai folder cache, Xcode, browser, dan Docker secara menyeluruh tanpa perlu meminta izin berulang kali.")
+                Text("Enable Full Disk Access once in System Settings so MacScanner can thoroughly scan application caches, Xcode, browsers, and Docker directories without repeated permission prompts.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -70,18 +70,18 @@ struct FullDiskAccessModalView: View {
             VStack(alignment: .leading, spacing: 14) {
                 stepRow(
                     step: "1",
-                    title: "Klik tombol 'Buka System Settings' di bawah",
-                    desc: "macOS akan langsung membuka menu Privacy & Security ▸ Full Disk Access."
+                    title: "Click 'Open System Settings' below",
+                    desc: "macOS will open directly to Privacy & Security ▸ Full Disk Access."
                 )
                 stepRow(
                     step: "2",
-                    title: "Nyalakan toggle di samping 'MacScanner'",
-                    desc: "Gunakan Touch ID atau masukkan kata sandi Mac Anda jika diminta."
+                    title: "Toggle the switch next to 'MacScanner'",
+                    desc: "Authenticate with Touch ID or enter your Mac password when prompted."
                 )
                 stepRow(
                     step: "3",
-                    title: "Selesai & Bebas Hambatan",
-                    desc: "MacScanner kini siap memindai dan membersihkan disk dengan performa maksimal."
+                    title: "Ready & Unrestricted",
+                    desc: "MacScanner is now equipped to scan and clean storage at maximum performance."
                 )
             }
             .padding(16)
@@ -97,7 +97,7 @@ struct FullDiskAccessModalView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.up.forward.app.fill")
-                        Text("Buka System Settings")
+                        Text("Open System Settings")
                             .fontWeight(.bold)
                     }
                     .frame(maxWidth: .infinity)
@@ -110,7 +110,7 @@ struct FullDiskAccessModalView: View {
                 Button {
                     isPresented = false
                 } label: {
-                    Text("Nanti Saja (Lanjutkan Pemindaian Terbatas)")
+                    Text("Maybe Later (Continue with Limited Scan)")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }

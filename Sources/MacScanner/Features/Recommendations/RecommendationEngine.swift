@@ -17,7 +17,7 @@ enum RecommendationEngine {
              .safe, .cache, "sparkles"),
 
             ("Figma App & Canvas Cache", lib.appendingPathComponent("Caches/com.figma.Desktop"),
-             "Figma webview engine caches, GPU texture caches, and font render temporary bitmaps. 100% aman dibersihkan tanpa menghapus akun login, draft, atau plugin Figma Anda.",
+             "Figma webview engine caches, GPU texture caches, and font render temporary bitmaps. 100% safe to clear without affecting your logins, drafts, or Figma plugins.",
              .safe, .designer, "paintbrush.fill"),
 
             ("Adobe After Effects Disk Cache", lib.appendingPathComponent("Caches/Adobe/After Effects"),
@@ -49,11 +49,11 @@ enum RecommendationEngine {
              .caution, .developer, "archivebox.fill"),
 
             ("Docker Data (Review First)", lib.appendingPathComponent("Containers/com.docker.docker"),
-             "Docker Desktop virtual disk (Docker.raw), active containers, and build cache. Gunakan 'Docker Smart Clean' untuk menghapus build cache & image tak terpakai tanpa menghapus container/volume aktif Anda.",
+             "Docker Desktop virtual disk (Docker.raw), active containers, and build cache. Use 'Docker Smart Clean' to safely prune build cache & dangling images without affecting active containers/volumes.",
              .caution, .developer, "shippingbox.and.arrow.backward.fill"),
 
             ("iOS/Simulator Devices (Review First)", lib.appendingPathComponent("Developer/CoreSimulator/Devices"),
-             "Simulator disk images and runtime caches. Gunakan 'Clean Unavailable' untuk menghapus cache simulator lama yang sudah tidak terpakai.",
+             "Simulator disk images and runtime caches. Use 'Clean Unavailable' to delete legacy simulator caches you no longer need.",
              .caution, .developer, "iphone.gen3"),
 
             ("iOS Device Backups", lib.appendingPathComponent("Application Support/MobileSync/Backup"),

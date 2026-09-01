@@ -372,7 +372,7 @@ struct PerformanceView: View {
                             .foregroundStyle(.secondary)
 
                         if let cacheURL = app.diskCacheURL, app.diskCacheBytes > 10 * 1024 * 1024 {
-                            Button("Bersihkan Cache") {
+                            Button("Clean Cache") {
                                 pendingCleanCache = (cacheURL, app.appName)
                             }
                             .buttonStyle(.borderedProminent)
@@ -550,17 +550,17 @@ struct PerformanceView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Aplikasi & Proses yang Membebani Mac (Klik untuk Detail & Aksi)")
+                    Text("Apps & High-Impact Processes (Click for Details & Actions)")
                         .font(.headline)
                         .fontWeight(.bold)
-                    Text("Diurutkan berdasarkan akumulasi konsumsi CPU dan RAM selama sesi ini.")
+                    Text("Ranked by cumulative CPU and RAM consumption during this session.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Pill(text: "\(apps.count) Proses Aktif", color: .orange)
+                Pill(text: "\(apps.count) Active Processes", color: .orange)
             }
 
             ForEach(apps) { app in

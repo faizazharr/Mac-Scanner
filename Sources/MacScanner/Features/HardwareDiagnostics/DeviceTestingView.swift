@@ -74,7 +74,7 @@ struct DeviceTestingView: View {
                     Text("Hardware Diagnostics & Device Test")
                         .font(.title3)
                         .fontWeight(.bold)
-                    Text("Uji menyeluruh fungsionalitas layar, speaker stereo, mikrofon, keyboard, trackpad, dan baterai.")
+                    Text("Comprehensive diagnostics for screen, stereo speakers, microphone, keyboard, trackpad, and battery.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -93,14 +93,14 @@ struct DeviceTestingView: View {
     private var screenTestCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("1. Uji Layar & Dead Pixel", systemImage: "display")
+                Label("1. Screen & Dead Pixel Test", systemImage: "display")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
-                Pill(text: "8 Warna Uji", color: .purple)
+                Pill(text: "8 Test Colors", color: .purple)
             }
 
-            Text("Mendeteksi sub-pixel mati (dead pixel), pixel macet (stuck pixel), kebocoran lampu latar (backlight bleed), dan keseragaman panel.")
+            Text("Detect dead sub-pixels, stuck pixels, backlight bleeding, and panel color uniformity across full screen.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -124,7 +124,7 @@ struct DeviceTestingView: View {
             } label: {
                 HStack {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    Text("Mulai Uji Layar Fullscreen")
+                    Text("Launch Fullscreen Screen Test")
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
@@ -143,7 +143,7 @@ struct DeviceTestingView: View {
     private var speakerTestCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("2. Uji Speaker Stereo L/R", systemImage: "speaker.wave.3.fill")
+                Label("2. Stereo Speaker L/R Test", systemImage: "speaker.wave.3.fill")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
@@ -152,7 +152,7 @@ struct DeviceTestingView: View {
                 }
             }
 
-            Text("Uji isolasi speaker Kiri & Kanan terpisah serta sapuan frekuensi untuk mendeteksi suara sember, pecah, atau getaran housing.")
+            Text("Test independent Left & Right audio channels and frequency sweeps to detect crackling, distortion, or chassis rattle.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -160,7 +160,7 @@ struct DeviceTestingView: View {
                 Button {
                     engine.playTone(frequency: 440, pan: -1.0, channelName: "Left Speaker")
                 } label: {
-                    Label("Speaker Kiri", systemImage: "speaker.wave.2.fill")
+                    Label("Left Speaker", systemImage: "speaker.wave.2.fill")
                         .font(.caption)
                         .frame(maxWidth: .infinity)
                 }
@@ -170,7 +170,7 @@ struct DeviceTestingView: View {
                 Button {
                     engine.playTone(frequency: 440, pan: 1.0, channelName: "Right Speaker")
                 } label: {
-                    Label("Speaker Kanan", systemImage: "speaker.wave.2.fill")
+                    Label("Right Speaker", systemImage: "speaker.wave.2.fill")
                         .font(.caption)
                         .frame(maxWidth: .infinity)
                 }
@@ -183,7 +183,7 @@ struct DeviceTestingView: View {
             } label: {
                 HStack {
                     Image(systemName: "waveform.path.ecg")
-                    Text("Uji Sapuan Frekuensi (60Hz – 8000Hz)")
+                    Text("Frequency Sweep Test (60Hz – 8000Hz)")
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
@@ -202,18 +202,18 @@ struct DeviceTestingView: View {
     private var micTestCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("3. Uji Mikrofon & Loopback", systemImage: "mic.fill")
+                Label("3. Microphone & Loopback Test", systemImage: "mic.fill")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
                 if engine.isRecordingMic {
-                    Pill(text: "Merekam (3s)…", color: .red)
+                    Pill(text: "Recording (3s)…", color: .red)
                 } else if engine.isPlayingLoopback {
-                    Pill(text: "Memutar Ulang…", color: .green)
+                    Pill(text: "Playing Back…", color: .green)
                 }
             }
 
-            Text("Uji sensitivitas input suara mikrofon dan dengarkan hasil rekaman suara Anda secara instan untuk cek kejernihan audio.")
+            Text("Test microphone audio sensitivity and immediately listen to playback to verify clear acoustic input.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -255,7 +255,7 @@ struct DeviceTestingView: View {
             } label: {
                 HStack {
                     Image(systemName: engine.isRecordingMic ? "record.circle.fill" : "mic.fill")
-                    Text(engine.isRecordingMic ? "Sedang Merekam…" : "Rekam Suara 3 Detik & Putar Ulang")
+                    Text(engine.isRecordingMic ? "Recording Audio…" : "Record 3-Second Audio & Playback")
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
@@ -275,14 +275,14 @@ struct DeviceTestingView: View {
     private var trackpadTestCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("4. Uji Trackpad & Force Touch", systemImage: "hand.tap.fill")
+                Label("4. Trackpad & Force Touch Test", systemImage: "hand.tap.fill")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
                 Pill(text: "\(trackpadClickCount) Clicks", color: .cyan)
             }
 
-            Text("Uji responsivitas klik kiri, klik kanan, dan getaran haptic feedback pada Trackpad Mac Anda.")
+            Text("Test click responsiveness, right-click gestures, and multi-pattern haptic vibration feedback.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -340,7 +340,7 @@ struct DeviceTestingView: View {
                 .frame(width: 0, height: 0)
 
             HStack {
-                Label("5. Uji Matrix Tombol & Shortcut Keyboard Mac", systemImage: "keyboard.fill")
+                Label("5. Mac Keyboard Matrix & Shortcut Test", systemImage: "keyboard.fill")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
@@ -452,7 +452,7 @@ struct DeviceTestingView: View {
     private func batteryCard(_ device: DeviceInfo) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("6. Status Kesehatan Baterai & Daya", systemImage: "battery.100.bolt")
+                Label("6. Battery Health & Power Status", systemImage: "battery.100.bolt")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
@@ -463,12 +463,12 @@ struct DeviceTestingView: View {
 
             HStack(spacing: 12) {
                 if let cycles = device.batteryCycleCount {
-                    diagnosticSpecTile(title: "Cycle Count", value: "\(cycles)", sub: "Siklus pengisian")
+                    diagnosticSpecTile(title: "Cycle Count", value: "\(cycles)", sub: "Charge cycles")
                 }
                 if let maxCap = device.batteryMaxCapacityPercent {
-                    diagnosticSpecTile(title: "Maximum Capacity", value: "\(maxCap)%", sub: "Kesehatan baterai")
+                    diagnosticSpecTile(title: "Maximum Capacity", value: "\(maxCap)%", sub: "Battery health")
                 }
-                diagnosticSpecTile(title: "Condition", value: device.batteryCondition ?? "Normal", sub: "Status kesehatan")
+                diagnosticSpecTile(title: "Condition", value: device.batteryCondition ?? "Normal", sub: "Health status")
                 diagnosticSpecTile(title: "Platform", value: device.chip, sub: device.modelName)
             }
         }

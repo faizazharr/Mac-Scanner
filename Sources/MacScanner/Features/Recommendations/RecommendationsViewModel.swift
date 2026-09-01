@@ -151,9 +151,9 @@ final class RecommendationsViewModel: ObservableObject {
                 if output.contains("Total reclaimed space") || builderOutput.contains("Total reclaimed space") {
                     ToastManager.shared.show("Docker build cache & dangling images pruned!", icon: "sparkles", tint: .green)
                 } else if output.contains("Cannot connect") || output.contains("docker daemon is not running") {
-                    ToastManager.shared.show("Docker Desktop belum aktif. Buka Docker Desktop terlebih dahulu.", icon: "exclamationmark.triangle.fill", tint: .orange)
+                    ToastManager.shared.show("Docker Desktop is not running. Please launch Docker first.", icon: "exclamationmark.triangle.fill", tint: .orange)
                 } else {
-                    ToastManager.shared.show("Docker Smart Prune selesai!", icon: "checkmark.circle.fill", tint: .green)
+                    ToastManager.shared.show("Docker Smart Prune completed!", icon: "checkmark.circle.fill", tint: .green)
                 }
                 self.scan()
             }
