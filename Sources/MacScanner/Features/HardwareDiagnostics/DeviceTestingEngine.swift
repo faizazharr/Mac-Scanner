@@ -489,6 +489,7 @@ final class DeviceTestingEngine: ObservableObject {
     @Published var motionSpeed: Double = 480.0 // pixels per second
 
     private var fullscreenWindow: DeadPixelWindow?
+    private weak var previousMainWindow: NSWindow?
     private var keyEventMonitor: Any?
 
     var currentCategoryPatterns: [ScreenTestItem] {
@@ -552,6 +553,9 @@ final class DeviceTestingEngine: ObservableObject {
     private func presentFullscreenWindow() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
 
+        // Remember the active main window before opening fullscreen overlay
+        self.previousMainWindow = NSApp.windows.first(where: { $0.isVisible && $0 !== self.fullscreenWindow && $0.canBecomeKey }) ?? NSApp.mainWindow ?? NSApp.keyWindow
+
         // Close any existing window first
         closeFullscreenWindow()
 
@@ -562,7 +566,7 @@ final class DeviceTestingEngine: ObservableObject {
             defer: false,
             screen: screen
         )
-        window.level = .screenSaver
+        window.level = .floating
         window.isOpaque = true
         window.hasShadow = false
         window.backgroundColor = .black
@@ -592,6 +596,16 @@ final class DeviceTestingEngine: ObservableObject {
             win.orderOut(nil)
             win.close()
             fullscreenWindow = nil
+        }
+
+        // Return focus immediately back to the main MacScanner application window
+        DispatchQueue.main.async { [weak self] in
+            if let hostWin = self?.previousMainWindow, hostWin.isVisible {
+                hostWin.makeKeyAndOrderFront(nil)
+            } else if let fallbackWin = NSApp.windows.first(where: { $0.canBecomeKey && $0.isVisible }) {
+                fallbackWin.makeKeyAndOrderFront(nil)
+            }
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 

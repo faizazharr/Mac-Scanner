@@ -3,11 +3,18 @@
 
 import SwiftUI
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+}
+
 /// App entry point: the main window plus a menu bar extra, both reading
 /// from the same live `PerformanceViewModel`/`DeviceInfoViewModel` — one
 /// polling loop regardless of which one (or both) is currently visible.
 @main
 struct MacScannerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var deviceVM = DeviceInfoViewModel()
     @StateObject private var performanceVM = PerformanceViewModel()
 
