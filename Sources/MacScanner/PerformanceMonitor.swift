@@ -2,6 +2,8 @@
 // Copyright © 2026 Faiz Azhar Ristya Nugraha. All rights reserved.
 
 import Foundation
+import Darwin
+import MachO
 
 /// How far a metric is from "everything's fine" — the shared traffic-light
 /// scale every gauge in the Performance tab reports against.
@@ -13,7 +15,6 @@ enum LoadRisk: Int, Comparable {
     static func < (lhs: LoadRisk, rhs: LoadRisk) -> Bool { lhs.rawValue < rhs.rawValue }
 }
 
-/// Which order the Top Processes list is ranked in.
 enum ProcessSortMode: String, CaseIterable {
     case cpu = "CPU"
     case memory = "RAM"
@@ -42,6 +43,34 @@ struct ProcessStats: Identifiable {
         return appName == ownName ? nil : appName
     }
 
+    /// Clean, canonical human-readable application name (e.g. groups Chrome helpers into Google Chrome).
+    var canonicalAppName: String {
+        if let parent = parentAppName { return parent }
+        let raw = name
+        if raw.contains("Google Chrome") { return "Google Chrome" }
+        if raw.contains("Figma") { return "Figma" }
+        if raw.contains("Slack") { return "Slack" }
+        if raw.contains("Discord") { return "Discord" }
+        if raw.contains("Code Helper") { return "Visual Studio Code" }
+        if raw.contains("Arc Helper") || raw.contains("Arc") { return "Arc Browser" }
+        if raw.contains("Brave") { return "Brave Browser" }
+        if raw.contains("Microsoft Edge") { return "Microsoft Edge" }
+        if raw.contains("Safari") { return "Safari" }
+        return raw
+    }
+
+    /// Identifies internal macOS operating system daemons that are normal and shouldn't be blamed.
+    var isSystemDaemon: Bool {
+        let systemDaemons: Set<String> = [
+            "WindowServer", "coreaudiod", "kernel_task", "launchd", "mds", "mds_stores",
+            "fseventsd", "diagnosticd", "syspolicyd", "logd", "opendirectoryd", "powerd",
+            "diskarbitrationd", "bluetoothd", "airportd", "identityservicesd", "trustd",
+            "securityd", "containermanagerd", "taskgated", "runningboardd", "symptomsd",
+            "mediaremoted", "ControlCenter", "Dock", "Finder", "SystemUIServer"
+        ]
+        return systemDaemons.contains(name) || fullCommand.hasPrefix("/System/Library") || fullCommand.hasPrefix("/usr/libexec")
+    }
+
     var isKnownHeavy: Bool { HeavyAppCatalog.matches(fullCommand) }
     var isResourceHeavy: Bool { cpuPercent >= 40 || memoryBytes >= 1_500_000_000 }
 }
@@ -53,7 +82,8 @@ enum HeavyAppCatalog {
         "parallels", "vmware fusion", "final cut", "davinci resolve",
         "obs", "zoom.us", "unity", "blender", "adobe premiere",
         "adobe photoshop", "after effects", "handbrake", "logic pro",
-        "cinema 4d", "maya", "houdini", "unreal", "electron", "chrome"
+        "cinema 4d", "maya", "houdini", "unreal", "electron", "chrome",
+        "figma", "slack"
     ]
 
     static func matches(_ command: String) -> Bool {
@@ -83,17 +113,17 @@ struct PerformanceHistoryPoint: Identifiable {
 extension ProcessInfo.ThermalState {
     var label: String {
         switch self {
-        case .nominal: return "Nominal (Cool)"
-        case .fair: return "Fair (Warm)"
-        case .serious: return "Serious (Hot)"
-        case .critical: return "Critical (Throttled)"
+        case .nominal: return "Cool"
+        case .fair: return "Warm"
+        case .serious: return "Hot"
+        case .critical: return "Throttled"
         @unknown default: return "Unknown"
         }
     }
 }
 
 /// Reads live system load: memory, swap, CPU, thermal state, and the
-/// heaviest current processes.
+/// heaviest current processes via native Mach kernel calls (0 subprocess overhead).
 enum PerformanceMonitor {
 
     struct MemorySnapshot {
@@ -168,11 +198,11 @@ enum PerformanceMonitor {
         }
 
         var heaviestProcess: ProcessStats? {
-            topProcesses.max { $0.cpuPercent < $1.cpuPercent }
+            topProcesses.first { !$0.isSystemDaemon } ?? topProcesses.max { $0.cpuPercent < $1.cpuPercent }
         }
 
         var heaviestByMemory: ProcessStats? {
-            topProcesses.max { $0.memoryBytes < $1.memoryBytes }
+            topProcessesByMemory.first { !$0.isSystemDaemon } ?? topProcesses.max { $0.memoryBytes < $1.memoryBytes }
         }
 
         private static let notableMemoryThreshold: Int64 = 500_000_000 // 500 MB
@@ -180,7 +210,7 @@ enum PerformanceMonitor {
         var memoryAdvice: String? {
             guard memoryRisk >= .warning else { return nil }
             if let heaviest = heaviestByMemory, heaviest.memoryBytes >= Self.notableMemoryThreshold {
-                return "\(heaviest.name) is consuming \(ByteFormat.string(heaviest.memoryBytes)) RAM. Quit it if not in use."
+                return "\(heaviest.canonicalAppName) is consuming \(ByteFormat.string(heaviest.memoryBytes)) RAM. Quit it if not in use."
             }
             return "Close unused applications or heavy browser tabs to relieve memory pressure."
         }
@@ -188,19 +218,24 @@ enum PerformanceMonitor {
         var cpuAdvice: String? {
             guard cpuRisk >= .warning else { return nil }
             if let heaviest = heaviestProcess, heaviest.cpuPercent >= 20 {
-                return "\(heaviest.name) is taking \(Int(heaviest.cpuPercent))% CPU load. Consider quitting or pausing its work."
+                return "\(heaviest.canonicalAppName) is taking \(Int(heaviest.cpuPercent))% CPU load. Consider pausing or quitting it."
             }
             return "High CPU utilization detected. Check Top Processes below to inspect heavy tasks."
         }
 
         var swapAdvice: String? {
             guard swapRisk >= .warning else { return nil }
-            let heavyNames = Set(heavyAppsRunning.map(\.name)).sorted()
+            let nonSystemHeavy = heavyAppsRunning.filter { !$0.isSystemDaemon }
+            let heavyNames = Array(Set(nonSystemHeavy.map(\.canonicalAppName))).sorted()
             if !heavyNames.isEmpty {
-                return "Mac is swapping to disk. Closing \(heavyNames.joined(separator: ", ")) will help restore peak speed."
+                if heavyNames.count == 1 {
+                    return "Mac is swapping to disk. Closing \(heavyNames[0]) (and its background tabs) will free up memory immediately."
+                } else {
+                    return "Mac is swapping to disk. Closing \(heavyNames.joined(separator: ", ")) will help restore peak speed."
+                }
             }
-            if let heaviest = heaviestByMemory, heaviest.memoryBytes >= Self.notableMemoryThreshold {
-                return "Mac is swapping to disk. Quitting \(heaviest.name) (\(ByteFormat.string(heaviest.memoryBytes))) will free up physical memory."
+            if let heaviest = heaviestByMemory, !heaviest.isSystemDaemon, heaviest.memoryBytes >= Self.notableMemoryThreshold {
+                return "Mac is swapping to disk. Quitting \(heaviest.canonicalAppName) (\(ByteFormat.string(heaviest.memoryBytes))) will free up physical memory."
             }
             return "Swap file under pressure. Close inactive apps to prevent disk I/O thrashing."
         }
@@ -254,49 +289,24 @@ enum PerformanceMonitor {
         }
     }
 
-    /// Takes a snapshot. Each metric is its own subprocess spawn (`vm_stat`,
-    /// `sysctl`, `top`, `ioreg`, `ps`), and they're independent of each
-    /// other, so they run concurrently rather than one after another — on a
-    /// 3-second polling loop, serializing 5-6 process spawns adds up to a
-    /// real, measurable CPU cost for no benefit.
-    ///
-    /// `includeMemorySortedProcesses` gates the second, separate `ps` scan
-    /// (sorted by RSS) — it's a full process-table walk just like the CPU
-    /// one, so it's only worth paying for while the user is actually
-    /// looking at the RAM-sorted list. Otherwise `topProcessesByMemory` is
-    /// derived for free by re-sorting the CPU-ranked list already fetched
-    /// (an approximation outside the top-CPU set, but that's fine since it
-    /// isn't shown until the user switches to it, at which point the next
-    /// tick fetches the real thing).
-    static func capture(processLimit: Int = 16, includeMemorySortedProcesses: Bool = false) -> Snapshot {
-        var memory = MemorySnapshot(totalBytes: totalPhysicalMemory(), usedBytes: 0)
-        var swap = SwapSnapshot(totalBytes: 0, usedBytes: 0)
-        var cpuPercent: Double = 0
-        var gpuPercent: Double?
-        var byCPU: [ProcessStats] = []
-        var byMemory: [ProcessStats]?
+    private static var previousCPUTicks: (user: UInt32, sys: UInt32, idle: UInt32, nice: UInt32)?
 
-        let group = DispatchGroup()
-        let queue = DispatchQueue.global(qos: .utility)
-
-        group.enter(); queue.async { memory = memorySnapshot(); group.leave() }
-        group.enter(); queue.async { swap = swapSnapshot(); group.leave() }
-        group.enter(); queue.async { cpuPercent = systemCPUPercent(); group.leave() }
-        group.enter(); queue.async { gpuPercent = systemGPUPercent(); group.leave() }
-        group.enter(); queue.async { byCPU = processes(sortFlag: "-r", limit: processLimit); group.leave() }
-        if includeMemorySortedProcesses {
-            group.enter(); queue.async { byMemory = processes(sortFlag: "-m", limit: processLimit); group.leave() }
-        }
-        group.wait()
+    /// Captures a live snapshot using Mach kernel APIs and a single-pass process inspection.
+    static func capture(processLimit: Int = 16, includeMemorySortedProcesses: Bool = true) -> Snapshot {
+        let allProcesses = fetchAllProcesses()
+        let byCPU = Array(allProcesses.sorted { $0.cpuPercent > $1.cpuPercent }.prefix(processLimit))
+        let byMem = includeMemorySortedProcesses
+            ? Array(allProcesses.sorted { $0.memoryBytes > $1.memoryBytes }.prefix(processLimit))
+            : []
 
         return Snapshot(
-            memory: memory,
-            swap: swap,
-            cpuPercent: cpuPercent,
-            gpuPercent: gpuPercent,
+            memory: memorySnapshot(),
+            swap: swapSnapshot(),
+            cpuPercent: systemCPUPercent(),
+            gpuPercent: systemGPUPercent(),
             thermalState: ProcessInfo.processInfo.thermalState,
             topProcesses: byCPU,
-            topProcessesByMemory: byMemory ?? byCPU.sorted { $0.memoryBytes > $1.memoryBytes }
+            topProcessesByMemory: byMem
         )
     }
 
@@ -306,93 +316,101 @@ enum PerformanceMonitor {
         return result == 0
     }
 
-    // MARK: - Private
+    // MARK: - Native Mach Kernel Telemetry (0 Subprocess Overhead)
 
-    private static func totalPhysicalMemory() -> Int64 {
-        Int64(ProcessInfo.processInfo.physicalMemory)
-    }
-
+    /// Reads Memory usage directly from Mach kernel `host_statistics64` (HOST_VM_INFO64).
     private static func memorySnapshot() -> MemorySnapshot {
-        let total = totalPhysicalMemory()
-        let output = Shell.run("/usr/bin/vm_stat")
+        let total = Int64(ProcessInfo.processInfo.physicalMemory)
+        var vmStats = vm_statistics64()
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
 
-        var pageSize: Int64 = 16384
-        if let match = output.range(of: #"page size of (\d+) bytes"#, options: .regularExpression) {
-            let digits = output[match].filter(\.isNumber)
-            pageSize = Int64(digits) ?? pageSize
+        let kerr = withUnsafeMutablePointer(to: &vmStats) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
+            }
         }
 
-        var pages: [String: Int64] = [:]
-        for line in output.split(separator: "\n") {
-            guard let colon = line.firstIndex(of: ":") else { continue }
-            let label = line[line.startIndex..<colon]
-                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-                .trimmingCharacters(in: .whitespaces)
-                .lowercased()
-            let digits = line[line.index(after: colon)...].filter(\.isNumber)
-            pages[label] = Int64(digits)
+        guard kerr == KERN_SUCCESS else {
+            return MemorySnapshot(totalBytes: total, usedBytes: 0)
         }
 
-        let active = pages["pages active"] ?? 0
-        let wired = pages["pages wired down"] ?? 0
-        let compressorOccupied = pages["pages occupied by compressor"] ?? 0
+        let pageSize = Int64(vm_kernel_page_size)
+        let active = Int64(vmStats.active_count)
+        let wired = Int64(vmStats.wire_count)
+        let compressorOccupied = Int64(vmStats.compressor_page_count)
         let used = (active + wired + compressorOccupied) * pageSize
 
-        return MemorySnapshot(totalBytes: total, usedBytes: used)
+        return MemorySnapshot(totalBytes: total, usedBytes: min(used, total))
     }
 
+    /// Reads Swap usage directly via C `sysctlbyname("vm.swapusage")`.
     private static func swapSnapshot() -> SwapSnapshot {
-        let output = Shell.run("/usr/sbin/sysctl", ["vm.swapusage"])
-
-        func bytes(after key: String) -> Int64 {
-            guard let range = output.range(of: "\(key) = ") else { return 0 }
-            let rest = output[range.upperBound...]
-            let token = rest.prefix { !$0.isWhitespace }
-            return parseSize(String(token))
+        var swap = xsw_usage()
+        var size = MemoryLayout<xsw_usage>.size
+        let result = sysctlbyname("vm.swapusage", &swap, &size, nil, 0)
+        guard result == 0 else {
+            return SwapSnapshot(totalBytes: 0, usedBytes: 0)
         }
-
-        return SwapSnapshot(totalBytes: bytes(after: "total"), usedBytes: bytes(after: "used"))
+        return SwapSnapshot(totalBytes: Int64(swap.xsu_total), usedBytes: Int64(swap.xsu_used))
     }
 
-    private static func parseSize(_ token: String) -> Int64 {
-        guard let unit = token.last, unit.isLetter else { return 0 }
-        let numberPart = token.dropLast()
-        guard let value = Double(numberPart) else { return 0 }
-        let multiplier: Double
-        switch unit {
-        case "K": multiplier = 1_024
-        case "M": multiplier = 1_024 * 1_024
-        case "G": multiplier = 1_024 * 1_024 * 1_024
-        default: multiplier = 1
-        }
-        return Int64(value * multiplier)
-    }
-
+    /// Reads CPU load directly from Mach kernel `host_statistics` (HOST_CPU_LOAD_INFO).
     private static func systemCPUPercent() -> Double {
-        let output = Shell.run("/usr/bin/top", ["-l", "1", "-n", "0"])
-        guard let line = output.split(separator: "\n").first(where: { $0.contains("CPU usage") }) else {
+        var cpuLoadInfo = host_cpu_load_info()
+        var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info>.size / MemoryLayout<integer_t>.size)
+
+        let kerr = withUnsafeMutablePointer(to: &cpuLoadInfo) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, $0, &count)
+            }
+        }
+
+        guard kerr == KERN_SUCCESS else { return 0 }
+
+        let user = cpuLoadInfo.cpu_ticks.0
+        let sys = cpuLoadInfo.cpu_ticks.1
+        let idle = cpuLoadInfo.cpu_ticks.2
+        let nice = cpuLoadInfo.cpu_ticks.3
+
+        defer {
+            previousCPUTicks = (user, sys, idle, nice)
+        }
+
+        guard let prev = previousCPUTicks else {
             return 0
         }
-        let numbers = line
-            .split(separator: " ")
-            .compactMap { token -> Double? in
-                guard token.hasSuffix("%") else { return nil }
-                return Double(token.dropLast())
-            }
-        return numbers.dropLast().reduce(0, +)
+
+        let userDiff = Double(user.subtractingReportingOverflow(prev.user).partialValue)
+        let sysDiff = Double(sys.subtractingReportingOverflow(prev.sys).partialValue)
+        let idleDiff = Double(idle.subtractingReportingOverflow(prev.idle).partialValue)
+        let niceDiff = Double(nice.subtractingReportingOverflow(prev.nice).partialValue)
+
+        let totalDiff = userDiff + sysDiff + idleDiff + niceDiff
+        guard totalDiff > 0 else { return 0 }
+
+        let activeDiff = userDiff + sysDiff + niceDiff
+        return min(max((activeDiff / totalDiff) * 100.0, 0), 100.0)
     }
 
-    private static func processes(sortFlag: String, limit: Int) -> [ProcessStats] {
-        let output = Shell.run("/bin/ps", ["-Ao", "pid=,pcpu=,rss=,comm=", sortFlag])
+    /// Single-pass process list fetch via `ps` (only 1 lightweight process execution per tick).
+    private static func fetchAllProcesses() -> [ProcessStats] {
+        let output = Shell.run("/bin/ps", ["-Aro", "pid=,pcpu=,rss=,comm="])
         var results: [ProcessStats] = []
 
-        for line in output.split(separator: "\n").prefix(limit) {
+        for line in output.split(separator: "\n").prefix(35) {
             let fields = line.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
             guard fields.count == 4,
                   let pid = Int32(fields[0]),
                   let cpu = Double(fields[1]),
                   let rssKB = Int64(fields[2]) else { continue }
-            results.append(ProcessStats(pid: pid, fullCommand: String(fields[3]), cpuPercent: cpu, memoryBytes: rssKB * 1024))
+            results.append(
+                ProcessStats(
+                    pid: pid,
+                    fullCommand: String(fields[3]),
+                    cpuPercent: cpu,
+                    memoryBytes: rssKB * 1024
+                )
+            )
         }
         return results
     }

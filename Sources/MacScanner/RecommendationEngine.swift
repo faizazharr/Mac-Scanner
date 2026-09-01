@@ -16,6 +16,26 @@ enum RecommendationEngine {
              "App and system caches. Safe to clear; regenerated automatically as needed.",
              .safe, .cache, "sparkles"),
 
+            ("Figma App & Canvas Cache", lib.appendingPathComponent("Caches/com.figma.Desktop"),
+             "Figma webview engine caches, GPU texture caches, and font render temporary bitmaps. 100% aman dibersihkan tanpa menghapus akun login, draft, atau plugin Figma Anda.",
+             .safe, .designer, "paintbrush.fill"),
+
+            ("Adobe After Effects Disk Cache", lib.appendingPathComponent("Caches/Adobe/After Effects"),
+             "Render preview frames and comp RAM cache. Can become massive (10-50 GB+). Safe to clear.",
+             .safe, .designer, "sparkles.tv.fill"),
+
+            ("Adobe Media Cache", lib.appendingPathComponent("Application Support/Adobe/Common"),
+             "Adobe Premiere / After Effects peak files and audio scratch caches.",
+             .safe, .designer, "photo.stack.fill"),
+
+            ("Sketch App Cache", lib.appendingPathComponent("Caches/com.bohemiancoding.sketch3"),
+             "Sketch local document previews and cloud symbol caches.",
+             .safe, .designer, "diamond.fill"),
+
+            ("Blender 3D Cache", lib.appendingPathComponent("Caches/Blender"),
+             "Blender shader compilation cache and physics simulations.",
+             .safe, .designer, "cube.transparent.fill"),
+
             ("Trash", home.appendingPathComponent(".Trash"),
              "Already deleted files waiting for permanent emptying.",
              .safe, .cache, "trash.fill"),
@@ -28,33 +48,13 @@ enum RecommendationEngine {
              "Old app build archives from Xcode Organizer. Safe to delete if not needed for symbolication.",
              .caution, .developer, "archivebox.fill"),
 
-            ("iOS/Simulator Devices", lib.appendingPathComponent("Developer/CoreSimulator/Devices"),
-             "Simulator disk images and installed runtime apps. Erase unused simulators to reclaim massive space.",
-             .caution, .developer, "iphone.gen3"),
-
-            ("Homebrew Cache", lib.appendingPathComponent("Caches/Homebrew"),
-             "Downloaded package archives and bottles.",
-             .safe, .developer, "mug.fill"),
-
-            ("npm Cache", home.appendingPathComponent(".npm"),
-             "Downloaded npm package tarballs and metadata cache.",
-             .safe, .developer, "shippingbox.fill"),
-
-            ("Yarn Cache", lib.appendingPathComponent("Caches/Yarn"),
-             "Downloaded Yarn package cache.",
-             .safe, .developer, "cube.box.fill"),
-
-            ("pip Cache", lib.appendingPathComponent("Caches/pip"),
-             "Downloaded Python package wheels and archives.",
-             .safe, .developer, "chevron.left.forwardslash.chevron.right"),
-
-            ("CocoaPods Cache", home.appendingPathComponent(".cocoapods/repos"),
-             "CocoaPods spec repos and downloaded pods.",
-             .caution, .developer, "puzzlepiece.extension.fill"),
-
-            ("Docker Data", lib.appendingPathComponent("Containers/com.docker.docker"),
-             "Docker Desktop container layers, virtual disk (raw.qcow2/Docker.raw), and volumes.",
+            ("Docker Data (Review First)", lib.appendingPathComponent("Containers/com.docker.docker"),
+             "Docker Desktop virtual disk (Docker.raw), active containers, and build cache. Gunakan 'Docker Smart Clean' untuk menghapus build cache & image tak terpakai tanpa menghapus container/volume aktif Anda.",
              .caution, .developer, "shippingbox.and.arrow.backward.fill"),
+
+            ("iOS/Simulator Devices (Review First)", lib.appendingPathComponent("Developer/CoreSimulator/Devices"),
+             "Simulator disk images and runtime caches. Gunakan 'Clean Unavailable' untuk menghapus cache simulator lama yang sudah tidak terpakai.",
+             .caution, .developer, "iphone.gen3"),
 
             ("iOS Device Backups", lib.appendingPathComponent("Application Support/MobileSync/Backup"),
              "Full iPhone and iPad backups created via Finder/iTunes.",
@@ -67,10 +67,6 @@ enum RecommendationEngine {
             ("System & Diagnostic Logs", lib.appendingPathComponent("Logs"),
              "App diagnostic logs and crash logs. Safe to delete.",
              .safe, .logs, "doc.text.magnifyingglass"),
-
-            ("Adobe Media Cache", lib.appendingPathComponent("Application Support/Adobe/Common"),
-             "Adobe Premiere / After Effects peak files and audio scratch caches.",
-             .caution, .cache, "photo.stack.fill"),
 
             ("Xcode iOS DeviceSupport", lib.appendingPathComponent("Developer/Xcode/iOS DeviceSupport"),
              "Debug symbols per iOS device connected to Xcode. Safe to delete old OS versions you no longer test.",

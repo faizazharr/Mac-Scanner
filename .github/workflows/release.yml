@@ -1,9 +1,7 @@
 name: Release
 
-# Builds MacScanner.app on a GitHub-hosted macOS runner and attaches it as a
-# downloadable zip to a GitHub Release, whenever a version tag is pushed.
-# This is what makes the app installable for someone who doesn't have Xcode
-# or Swift — they download the zip from the Releases page, no build step.
+# Builds MacScanner.app and MacScanner.dmg on a GitHub-hosted macOS runner
+# and attaches the .dmg installer to a GitHub Release whenever a version tag is pushed.
 on:
   push:
     tags:
@@ -16,18 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build MacScanner.app
+      - name: Build MacScanner.app and MacScanner.dmg
         run: |
-          chmod +x Scripts/build_app.sh
-          ./Scripts/build_app.sh
-
-      - name: Zip the app bundle
-        run: |
-          cd build
-          ditto -c -k --sequesterRsrc --keepParent MacScanner.app MacScanner.zip
+          chmod +x Scripts/build_dmg.sh Scripts/build_app.sh
+          ./Scripts/build_dmg.sh release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/MacScanner.zip
+          files: |
+            build/MacScanner.dmg
+            build/MacScanner.app
           generate_release_notes: true

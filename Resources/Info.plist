@@ -24,5 +24,13 @@
     <true/>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>MacScanner needs permission to scan file sizes and disk usage on your Desktop.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>MacScanner needs permission to scan file sizes and disk usage in Documents.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>MacScanner needs permission to scan file sizes and disk usage in Downloads.</string>
+    <key>NSSystemAdministrationUsageDescription</key>
+    <string>MacScanner requires access to inspect system performance and disk usage.</string>
 </dict>
 </plist>

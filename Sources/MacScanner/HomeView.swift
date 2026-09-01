@@ -17,6 +17,9 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
 
+                // Permission Guidance Banner (if Full Disk Access not granted)
+                FullDiskAccessBanner()
+
                 // Storage Overview Card
                 if volumeTotal > 0 {
                     storageOverviewCard
@@ -184,6 +187,14 @@ struct HomeView: View {
     private var navigationGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
             NavCard(
+                title: "Designer & Browsers",
+                subtitle: "Plain-language Mac slowdown diagnostics, Figma/Adobe caches, and browser extension bloat.",
+                icon: "paintbrush.pointed.fill",
+                badge: "Creative & Web",
+                color: .pink
+            ) { onSelectTab(.designerBrowsers) }
+
+            NavCard(
                 title: "Folder Browser",
                 subtitle: "Drill into folders, interactive percentage donut breakdown, and relative size bars.",
                 icon: "folder.fill",
@@ -201,7 +212,7 @@ struct HomeView: View {
 
             NavCard(
                 title: "Large Files Finder",
-                subtitle: "Locate oversized files by category (Video, Archives, VM disks) with quick filters.",
+                subtitle: "Locate oversized files by category (Design, Video, Archives, VM disks) with quick filters.",
                 icon: "doc.badge.gearshape.fill",
                 badge: "Fast Scan",
                 color: .purple
@@ -214,6 +225,14 @@ struct HomeView: View {
                 badge: "Live Telemetry",
                 color: .orange
             ) { onSelectTab(.performance) }
+
+            NavCard(
+                title: "Hardware Diagnostics",
+                subtitle: "Uji menyeluruh fungsionalitas layar dead pixel, speaker stereo L/R, mikrofon, keyboard, dan trackpad.",
+                icon: "wrench.and.screwdriver.fill",
+                badge: "Device Test",
+                color: .teal
+            ) { onSelectTab(.deviceTesting) }
         }
     }
 }

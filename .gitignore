@@ -1,7 +1,42 @@
+# Xcode & Swift Package Manager
 .build/
 build/
 .swiftpm/
-.DS_Store
+Packages/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcuserdatad/
 *.xcuserstate
 xcuserdata/
-*.xcodeproj/xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Temporary Audio/Diagnostic Files
+*.m4a
+*.wav
+*.aiff
+*.log
+
+# Editors & IDEs
+.vscode/
+.idea/
+*.swp
+*~

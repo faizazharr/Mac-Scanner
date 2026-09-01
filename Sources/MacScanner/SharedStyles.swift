@@ -7,6 +7,7 @@ import SwiftUI
 
 enum FileCategory: String, CaseIterable {
     case all = "All"
+    case design = "Design / Creative"
     case video = "Video"
     case archive = "Archive"
     case diskImage = "Disk Image"
@@ -19,6 +20,7 @@ enum FileCategory: String, CaseIterable {
     var icon: String {
         switch self {
         case .all: return "square.grid.2x2.fill"
+        case .design: return "paintbrush.pointed.fill"
         case .video: return "film.fill"
         case .archive: return "archivebox.fill"
         case .diskImage: return "opticaldiscdrive.fill"
@@ -33,10 +35,11 @@ enum FileCategory: String, CaseIterable {
     var color: Color {
         switch self {
         case .all: return .accentColor
+        case .design: return .pink
         case .video: return .purple
         case .archive: return .orange
-        case .diskImage: return .pink
-        case .audio: return .red
+        case .diskImage: return .red
+        case .audio: return .yellow
         case .document: return .blue
         case .code: return .cyan
         case .app: return .indigo
@@ -51,7 +54,9 @@ enum FileCategory: String, CaseIterable {
         }
         let ext = url.pathExtension.lowercased()
         switch ext {
-        case "mp4", "mov", "mkv", "avi", "m4v", "webm", "flv", "wmv":
+        case "psd", "psb", "ai", "sketch", "fig", "blend", "aep", "prproj", "c4d", "exr", "indd", "xd", "procreate", "clip", "svg", "eps", "raw", "cr2", "nef", "arw", "dng", "tiff", "tif":
+            return .design
+        case "mp4", "mov", "mkv", "avi", "m4v", "webm", "flv", "wmv", "prores":
             return .video
         case "zip", "tar", "gz", "tgz", "rar", "7z", "bz2", "xz":
             return .archive

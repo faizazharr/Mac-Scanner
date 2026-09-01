@@ -5,7 +5,7 @@ import Foundation
 import SwiftUI
 
 /// Drives the Performance tab: live system-load telemetry, sparkline history,
-/// and process inspection.
+/// process inspection, and app root-cause dissection.
 @MainActor
 final class PerformanceViewModel: ObservableObject {
 
@@ -19,9 +19,13 @@ final class PerformanceViewModel: ObservableObject {
         case refreshNow
         /// Request termination of a specific process.
         case terminate(pid: Int32, name: String)
-        /// The Top Processes sort mode changed — informs the next capture
-        /// whether the (separate, equally expensive) RAM-sorted process
-        /// scan is actually worth fetching.
+        /// Inspect a specific app's root cause and process anatomy.
+        case inspectApp(String)
+        /// Clear inspected app detail.
+        case clearInspectedApp
+        /// Clean an app's disk cache.
+        case cleanAppCache(URL, String)
+        /// The Top Processes sort mode changed.
         case setProcessSort(ProcessSortMode)
     }
 
@@ -37,21 +41,37 @@ final class PerformanceViewModel: ObservableObject {
     /// Recommendations, one row per metric.
     @Published private(set) var stableRecommendations: [PerformanceRecommendation] = []
 
+    /// Which apps have actually been heavy over this session.
+    @Published private(set) var heaviestAppsThisSession: [AppImpactRecord] = []
+
+    /// Detailed anatomical root-cause breakdown of a selected/highlighted heavy app.
+    @Published private(set) var inspectedApp: AppInspectionDetail?
+
     private var timer: Timer?
     private var lastSignatures: [String: String] = [:]
     private var frozenAdviceByTitle: [String: String] = [:]
     private let maxHistoryPoints = 25
     private var processSort: ProcessSortMode = .cpu
+    private let impactTracker = AppImpactTracker()
+    private var lastApplyTime: Date?
+    private var manuallySelectedAppName: String?
+    private var activeViewerCount = 0
 
     /// Single entry point for every action the Performance view can raise.
     func send(_ action: Action) {
         switch action {
         case .appear:
-            refresh()
-            startAutoRefresh()
+            activeViewerCount += 1
+            if activeViewerCount == 1 {
+                refresh()
+                startAutoRefresh()
+            }
 
         case .disappear:
-            stopAutoRefresh()
+            activeViewerCount = max(0, activeViewerCount - 1)
+            if activeViewerCount == 0 {
+                stopAutoRefresh()
+            }
 
         case .refreshNow:
             refresh()
@@ -65,6 +85,23 @@ final class PerformanceViewModel: ObservableObject {
                 ToastManager.shared.show("Could not terminate \(name)", icon: "exclamationmark.circle.fill", tint: .red)
             }
 
+        case .inspectApp(let name):
+            manuallySelectedAppName = name
+            updateInspectedApp()
+
+        case .clearInspectedApp:
+            manuallySelectedAppName = nil
+            inspectedApp = nil
+
+        case .cleanAppCache(let url, let appName):
+            do {
+                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                ToastManager.shared.show("Cleared \(appName) cache", icon: "trash.fill", tint: .green)
+                updateInspectedApp()
+            } catch {
+                ToastManager.shared.show("Could not clear cache", icon: "exclamationmark.triangle.fill", tint: .red)
+            }
+
         case .setProcessSort(let mode):
             processSort = mode
         }
@@ -73,15 +110,24 @@ final class PerformanceViewModel: ObservableObject {
     // MARK: - Private
 
     private func refresh() {
-        let wantsMemorySortedList = processSort == .memory
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            let snapshot = PerformanceMonitor.capture(includeMemorySortedProcesses: wantsMemorySortedList)
-            DispatchQueue.main.async { self?.apply(snapshot) }
+        let wantsMem = processSort == .memory
+        Task {
+            let snap = await Task.detached(priority: .utility) {
+                PerformanceMonitor.capture(includeMemorySortedProcesses: wantsMem)
+            }.value
+
+            self.apply(snapshot: snap)
         }
     }
 
-    private func apply(_ snapshot: PerformanceMonitor.Snapshot) {
+    private func apply(snapshot: PerformanceMonitor.Snapshot) {
         self.snapshot = snapshot
+
+        let now = Date()
+        let elapsed = lastApplyTime.map { now.timeIntervalSince($0) } ?? 3.0
+        lastApplyTime = now
+        impactTracker.record(snapshot.topProcesses, intervalSeconds: elapsed)
+        heaviestAppsThisSession = impactTracker.rankedBySustainedImpact()
 
         // Record history point for sparkline charts
         let point = PerformanceHistoryPoint(
@@ -106,6 +152,31 @@ final class PerformanceViewModel: ObservableObject {
                 advice: frozenAdviceByTitle[rec.title] ?? rec.advice
             )
         }
+
+        updateInspectedApp()
+    }
+
+    private func updateInspectedApp() {
+        guard let snapshot = self.snapshot else { return }
+
+        // Determine which app to inspect: manually chosen app, or the #1 heaviest non-system app
+        let targetName: String
+        if let manual = manuallySelectedAppName {
+            targetName = manual
+        } else if let topUserApp = heaviestAppsThisSession.first(where: { !$0.isSystemDaemon }) {
+            targetName = topUserApp.name
+        } else if let heaviestProc = snapshot.topProcesses.first(where: { !$0.isSystemDaemon }) {
+            targetName = heaviestProc.canonicalAppName
+        } else {
+            return
+        }
+
+        Task {
+            let detail = await Task.detached(priority: .utility) {
+                AppInspector.inspect(appName: targetName, allProcesses: snapshot.topProcesses)
+            }.value
+            self.inspectedApp = detail
+        }
     }
 
     private func signature(for rec: PerformanceRecommendation, snapshot: PerformanceMonitor.Snapshot) -> String {
@@ -122,9 +193,6 @@ final class PerformanceViewModel: ObservableObject {
 
     private func startAutoRefresh() {
         stopAutoRefresh()
-        // Every metric here is a subprocess spawn; even parallelized, polling
-        // faster than this has diminishing returns for a "how's my Mac doing"
-        // dashboard and just burns more CPU sampling more often.
         timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }

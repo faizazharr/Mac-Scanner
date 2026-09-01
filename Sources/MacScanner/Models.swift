@@ -43,6 +43,7 @@ enum RiskLevel: String, CaseIterable {
 }
 
 enum RecommendationCategory: String, CaseIterable {
+    case designer = "Designer & Creative"
     case developer = "Developer"
     case cache = "Caches & Junk"
     case backup = "Backups & Sync"
@@ -51,6 +52,7 @@ enum RecommendationCategory: String, CaseIterable {
 
     var icon: String {
         switch self {
+        case .designer: return "paintbrush.pointed.fill"
         case .developer: return "hammer.fill"
         case .cache: return "trash.fill"
         case .backup: return "arrow.triangle.2.circlepath.circle.fill"
@@ -60,8 +62,7 @@ enum RecommendationCategory: String, CaseIterable {
     }
 }
 
-/// A known cleanup target (e.g. `~/Library/Caches`) evaluated against this
-/// Mac by `RecommendationEngine`.
+/// A known cleanup target evaluated against this Mac by `RecommendationEngine`.
 struct Recommendation: Identifiable {
     let id = UUID()
     let title: String
@@ -72,6 +73,60 @@ struct Recommendation: Identifiable {
     let iconName: String
     var sizeBytes: Int64 = 0
     var exists: Bool = false
+}
+
+// MARK: - Designer & Browser Models
+
+/// Information about a single browser extension installed on this Mac.
+struct BrowserExtensionInfo: Identifiable, Hashable {
+    let id = UUID()
+    let extensionID: String
+    let name: String
+    let version: String
+    let description: String
+    let browserName: String
+    let isHeavyCandidate: Bool
+}
+
+/// Information about an installed web browser on macOS.
+struct BrowserInfo: Identifiable {
+    let id = UUID()
+    let name: String
+    let icon: String
+    let tintColor: Color
+    let isInstalled: Bool
+    var cacheBytes: Int64 = 0
+    var extensions: [BrowserExtensionInfo] = []
+    let cacheURL: URL?
+    let extensionsURL: URL?
+
+    var extensionsCount: Int { extensions.count }
+}
+
+/// Information about a design/creative application's cached data.
+struct DesignAppCacheInfo: Identifiable {
+    let id = UUID()
+    let appName: String
+    let icon: String
+    let category: String
+    var sizeBytes: Int64 = 0
+    let path: URL
+    let explanation: String
+    let safeToClean: Bool
+    var exists: Bool = false
+}
+
+/// Plain-language diagnostic insight explaining why the Mac might be slow or bloated.
+struct DesignerDiagnosticInsight: Identifiable {
+    let id = UUID()
+    let title: String
+    let summary: String
+    let explanation: String
+    let icon: String
+    let color: Color
+    let actionTitle: String?
+    let targetURL: URL?
+    var browserName: String? = nil
 }
 
 /// Human-readable byte formatting (e.g. "161.55 GB"), shared across every view.

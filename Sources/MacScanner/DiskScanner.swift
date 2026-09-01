@@ -3,34 +3,68 @@
 
 import Foundation
 
-/// All filesystem-scanning primitives, backed by `du`/`find` shelled out via
-/// `Process` rather than a manual recursive walk — `du` is APFS-clone aware
-/// (won't double-count cloned files) and, for directories with millions of
-/// small files (Docker/Xcode caches), dramatically faster than doing the
-/// stat() calls ourselves in Swift.
+/// All filesystem-scanning primitives with Zero-Subprocess file sizing and
+/// thread-safe in-memory caching for directories.
 enum DiskScanner {
-    /// Size of a single path in bytes, using `du` (fast, APFS-clone aware).
-    /// Mildly niced so it doesn't fight the UI thread, but not throttled hard —
-    /// the earlier sluggishness was a runaway loop elsewhere, not `du` itself.
+    private static var sizeCache: [String: (size: Int64, timestamp: Date)] = [:]
+    private static let sizeCacheLock = NSLock()
+
+    /// Size of a single path in bytes.
+    /// Regular files use instantaneous kernel stat (0 subprocesses).
+    /// Directories use `du` with 30s TTL in-memory caching.
     static func size(of url: URL) -> Int64 {
-        let output = Shell.runNiced("/usr/bin/du", ["-sk", url.path])
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), !isDir.boolValue {
+            // Instant 0ms stat lookup for files
+            if let values = try? url.resourceValues(forKeys: [.fileAllocatedSizeKey, .fileSizeKey]) {
+                if let allocated = values.fileAllocatedSize { return Int64(allocated) }
+                if let size = values.fileSize { return Int64(size) }
+            }
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+               let size = attrs[.size] as? Int64 {
+                return size
+            }
+        }
+
+        // For directories: use cached du
+        let path = url.path
+        let now = Date()
+
+        sizeCacheLock.lock()
+        if let cached = sizeCache[path], now.timeIntervalSince(cached.timestamp) < 30.0 {
+            sizeCacheLock.unlock()
+            return cached.size
+        }
+        sizeCacheLock.unlock()
+
+        let output = Shell.runNiced("/usr/bin/du", ["-sk", path])
         let kb = output
             .split(separator: "\t")
             .first
             .flatMap { Int64($0) } ?? 0
-        return kb * 1024
+        let bytes = kb * 1024
+
+        sizeCacheLock.lock()
+        sizeCache[path] = (bytes, now)
+        sizeCacheLock.unlock()
+
+        return bytes
+    }
+
+    /// Clears the size cache (e.g. after a clean action).
+    static func invalidateCache() {
+        sizeCacheLock.lock()
+        sizeCache.removeAll()
+        sizeCacheLock.unlock()
     }
 
     /// Scans the immediate children of `directory`, computing each child's total size concurrently.
     static func scanChildren(of directory: URL, progress: @escaping (FileEntry) -> Void, completion: @escaping ([FileEntry]) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             let fm = FileManager.default
-            // Note: do NOT use .skipsHiddenFiles — on macOS ~/Library carries the
-            // UF_HIDDEN flag (not a dot-prefix), and it's usually the single
-            // biggest space consumer. Skipping it would defeat the whole point.
             guard let children = try? fm.contentsOfDirectory(
                 at: directory,
-                includingPropertiesForKeys: [.isDirectoryKey],
+                includingPropertiesForKeys: [.isDirectoryKey, .fileAllocatedSizeKey, .fileSizeKey],
                 options: []
             ) else {
                 DispatchQueue.main.async { completion([]) }
@@ -40,25 +74,37 @@ enum DiskScanner {
             var results: [FileEntry] = []
             let lock = NSLock()
             let group = DispatchGroup()
-            let semaphore = DispatchSemaphore(value: 8) // concurrent `du` processes — most finish in well under a second, so this is what actually determines how fast a folder shows up
+            let semaphore = DispatchSemaphore(value: 8)
 
             for child in children {
-                group.enter()
-                semaphore.wait()
-                DispatchQueue.global(qos: .userInitiated).async {
-                    defer {
-                        semaphore.signal()
-                        group.leave()
-                    }
-                    let isDir = (try? child.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-                    let bytes = size(of: child)
-                    let entry = FileEntry(url: child, sizeBytes: bytes, isDirectory: isDir)
+                let isDir = (try? child.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
 
+                if !isDir {
+                    // Regular file: Instant 0ms calculation on current thread
+                    let bytes = size(of: child)
+                    let entry = FileEntry(url: child, sizeBytes: bytes, isDirectory: false)
                     lock.lock()
                     results.append(entry)
                     lock.unlock()
-
                     DispatchQueue.main.async { progress(entry) }
+                } else {
+                    // Directory: Process concurrently with bounded semaphore
+                    group.enter()
+                    semaphore.wait()
+                    DispatchQueue.global(qos: .utility).async {
+                        defer {
+                            semaphore.signal()
+                            group.leave()
+                        }
+                        let bytes = size(of: child)
+                        let entry = FileEntry(url: child, sizeBytes: bytes, isDirectory: true)
+
+                        lock.lock()
+                        results.append(entry)
+                        lock.unlock()
+
+                        DispatchQueue.main.async { progress(entry) }
+                    }
                 }
             }
 

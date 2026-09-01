@@ -4,33 +4,39 @@
 import SwiftUI
 import AppKit
 
-/// The five tabs the app is organized into.
+/// The seven primary modes the app is organized into.
 enum ScreenerTab: String, CaseIterable, Identifiable {
     case home = "Home"
+    case designerBrowsers = "Designer & Browsers"
     case browser = "Folder Browser"
     case recommendations = "Recommendations"
     case largeFiles = "Large Files"
     case performance = "Performance"
+    case deviceTesting = "Hardware Test"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .home: return "house.fill"
+        case .designerBrowsers: return "paintbrush.pointed.fill"
         case .browser: return "folder.fill"
         case .recommendations: return "sparkles"
         case .largeFiles: return "doc.badge.gearshape.fill"
         case .performance: return "gauge.with.dots.needle.67percent"
+        case .deviceTesting: return "wrench.and.screwdriver.fill"
         }
     }
 
     var color: Color {
         switch self {
         case .home: return .blue
+        case .designerBrowsers: return .pink
         case .browser: return .cyan
         case .recommendations: return .green
         case .largeFiles: return .purple
         case .performance: return .orange
+        case .deviceTesting: return .teal
         }
     }
 }
@@ -38,15 +44,17 @@ enum ScreenerTab: String, CaseIterable, Identifiable {
 /// Root view: A sleek macOS Sidebar layout with glassmorphic styling,
 /// lazy tab activations, and global toast feedback overlay.
 struct ContentView: View {
+    @ObservedObject var deviceVM: DeviceInfoViewModel
+    @ObservedObject var performanceVM: PerformanceViewModel
+
     @State private var selection: ScreenerTab = .home
-    @StateObject private var deviceVM = DeviceInfoViewModel()
+    @StateObject private var designerBrowserVM = DesignerBrowserViewModel()
     @StateObject private var recommendationsVM = RecommendationsViewModel()
-    @StateObject private var performanceVM = PerformanceViewModel()
 
     var body: some View {
         NavigationSplitView {
             sidebar
-                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 280)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 245, max: 285)
         } detail: {
             detailView
                 .frame(minWidth: 780, minHeight: 600)
@@ -54,6 +62,9 @@ struct ContentView: View {
         }
         .withToastOverlay()
         .onChange(of: selection) { oldValue, newValue in
+            if newValue == .designerBrowsers {
+                designerBrowserVM.send(.appearIfNeeded)
+            }
             if newValue == .recommendations {
                 recommendationsVM.send(.appearIfNeeded)
             }
@@ -118,6 +129,8 @@ struct ContentView: View {
 
                     if tab == .recommendations && recommendationsVM.totalReclaimable > 0 {
                         Pill(text: ByteFormat.string(recommendationsVM.totalReclaimable), color: .green)
+                    } else if tab == .designerBrowsers && designerBrowserVM.totalDesignCacheBytes > 0 {
+                        Pill(text: ByteFormat.string(designerBrowserVM.totalDesignCacheBytes), color: .pink)
                     }
                 }
                 .padding(.vertical, 4)
@@ -154,6 +167,8 @@ struct ContentView: View {
         switch selection {
         case .home:
             HomeView(deviceVM: deviceVM) { selection = $0 }
+        case .designerBrowsers:
+            DesignerBrowserView(vm: designerBrowserVM)
         case .browser:
             BrowserView()
         case .recommendations:
@@ -162,6 +177,8 @@ struct ContentView: View {
             LargeFilesView()
         case .performance:
             PerformanceView(vm: performanceVM, deviceVM: deviceVM)
+        case .deviceTesting:
+            DeviceTestingView(deviceVM: deviceVM)
         }
     }
 }
@@ -539,19 +556,19 @@ struct RecommendationsView: View {
             // Reclaim Hero Banner
             heroReclaimBanner
 
-            // Filters & Actions Bar
+            // Search & Controls Bar
             HStack(spacing: 10) {
-                // Risk filter chips
-                HStack(spacing: 6) {
-                    filterChip(title: "All", isSelected: vm.selectedRisk == nil) {
-                        vm.selectedRisk = nil
-                    }
-                    ForEach(RiskLevel.allCases, id: \.self) { risk in
-                        filterChip(title: risk.rawValue, isSelected: vm.selectedRisk == risk, color: risk.color) {
-                            vm.selectedRisk = risk
-                        }
+                SearchField(placeholder: "Search targets (e.g. docker, xcode, figma)…", text: $vm.searchQuery)
+                    .frame(maxWidth: 320)
+
+                Picker("Sort by", selection: $vm.sortOption) {
+                    ForEach(RecommendationsViewModel.SortOption.allCases, id: \.self) { opt in
+                        Text(opt.rawValue).tag(opt)
                     }
                 }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .frame(width: 150)
 
                 Spacer()
 
@@ -577,6 +594,48 @@ struct RecommendationsView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+            }
+            .padding(.horizontal, 18)
+
+            // Category & Risk Filters Row
+            VStack(alignment: .leading, spacing: 8) {
+                // Categories
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        Text("Category:")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+
+                        filterChip(title: "All Categories", isSelected: vm.selectedCategory == nil, icon: "square.grid.2x2") {
+                            vm.selectedCategory = nil
+                        }
+                        ForEach(RecommendationCategory.allCases, id: \.self) { cat in
+                            filterChip(title: cat.rawValue, isSelected: vm.selectedCategory == cat, color: .purple, icon: cat.icon) {
+                                vm.selectedCategory = (vm.selectedCategory == cat ? nil : cat)
+                            }
+                        }
+                    }
+                }
+
+                // Safety Risks
+                HStack(spacing: 6) {
+                    Text("Safety:")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    filterChip(title: "All Safety Levels", isSelected: vm.selectedRisk == nil) {
+                        vm.selectedRisk = nil
+                    }
+                    ForEach(RiskLevel.allCases, id: \.self) { risk in
+                        filterChip(title: risk.rawValue, isSelected: vm.selectedRisk == risk, color: risk.color, icon: risk.icon) {
+                            vm.selectedRisk = (vm.selectedRisk == risk ? nil : risk)
+                        }
+                    }
+
+                    Spacer()
+
+                    Pill(text: "\(vm.filteredResults.count) Targets", color: .secondary)
+                }
             }
             .padding(.horizontal, 18)
 
@@ -656,7 +715,27 @@ struct RecommendationsView: View {
                                 .buttonStyle(.bordered)
                                 .controlSize(.mini)
 
-                                if rec.risk != .manual {
+                                if rec.title.contains("Docker Data") {
+                                    Button {
+                                        vm.send(.dockerSmartPrune)
+                                    } label: {
+                                        Label("Smart Prune", systemImage: "sparkles")
+                                            .font(.caption2)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.blue)
+                                    .controlSize(.mini)
+                                } else if rec.title.contains("iOS/Simulator") {
+                                    Button {
+                                        vm.send(.simulatorCleanUnavailable)
+                                    } label: {
+                                        Label("Clean Old", systemImage: "sparkles")
+                                            .font(.caption2)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.orange)
+                                    .controlSize(.mini)
+                                } else if rec.risk != .manual {
                                     Button {
                                         pendingTrash = rec.path
                                     } label: {
@@ -731,14 +810,18 @@ struct RecommendationsView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
-                    Text(ByteFormat.string(vm.totalReclaimable))
+                    Text(ByteFormat.string(vm.totalSafeReclaimable))
                         .font(.title.bold())
                         .foregroundStyle(.green)
-                    Text("Safe to Reclaim")
+                    Text("100% Safe to Clean")
                         .font(.headline)
                         .fontWeight(.semibold)
+
+                    if vm.totalCautionReclaimable > 0 {
+                        Pill(text: "\(ByteFormat.string(vm.totalCautionReclaimable)) Review First", color: .orange, icon: "exclamationmark.triangle.fill")
+                    }
                 }
-                Text("Caches, developer build artifacts, simulator devices, and temporary logs.")
+                Text("App & web caches, build artifacts, designer canvas caches, and temp logs. (Docker & Simulator terlindungi oleh Smart Clean).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -763,20 +846,26 @@ struct RecommendationsView: View {
         .padding(.top, 16)
     }
 
-    private func filterChip(title: String, isSelected: Bool, color: Color = .blue, action: @escaping () -> Void) -> some View {
+    private func filterChip(title: String, isSelected: Bool, color: Color = .blue, icon: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.caption)
-                .fontWeight(isSelected ? .bold : .regular)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(isSelected ? color.opacity(0.2) : Color.secondary.opacity(0.08))
-                .foregroundStyle(isSelected ? color : .primary)
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .strokeBorder(isSelected ? color.opacity(0.4) : Color.clear, lineWidth: 1)
-                )
+            HStack(spacing: 4) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.caption2)
+                }
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(isSelected ? .bold : .regular)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(isSelected ? color.opacity(0.2) : Color.secondary.opacity(0.08))
+            .foregroundStyle(isSelected ? color : .primary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(isSelected ? color.opacity(0.4) : Color.clear, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
