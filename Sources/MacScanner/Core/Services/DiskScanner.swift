@@ -122,23 +122,46 @@ enum DiskScanner {
         return (Int64(total), free)
     }
 
-    /// Finds files at or above `minBytes` under `root`, skipping the given subpaths.
-    static func findLargeFiles(root: URL, minMB: Int, exclude: [URL], limit: Int = 200, completion: @escaping ([FileEntry]) -> Void) {
+    /// Finds files at or above `minMB` under `root`, using instant Spotlight indexing with fallback.
+    static func findLargeFiles(root: URL, minMB: Int, exclude: [URL] = [], limit: Int = 300, completion: @escaping ([FileEntry]) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            var args = [root.path, "-type", "f", "-size", "+\(minMB)M"]
-            for ex in exclude {
-                args += ["-not", "-path", ex.path + "/*"]
-            }
-            let output = Shell.runNiced("/usr/bin/find", args)
+            let minBytes = Int64(minMB) * 1024 * 1024
+            let excludePaths = exclude.map { $0.path }
+
+            // 1. Primary: Instant Spotlight metadata search (< 0.2s)
+            let mdArgs = ["-onlyin", root.path, "kMDItemFSSize >= \(minBytes)"]
+            let mdOutput = Shell.runNiced("/usr/bin/mdfind", mdArgs)
 
             var entries: [FileEntry] = []
             let fm = FileManager.default
-            for line in output.split(separator: "\n").prefix(limit * 4) {
-                let path = String(line)
-                let url = URL(fileURLWithPath: path)
-                guard let attrs = try? fm.attributesOfItem(atPath: path),
-                      let size = attrs[.size] as? Int64 else { continue }
-                entries.append(FileEntry(url: url, sizeBytes: size, isDirectory: false))
+            let lines = mdOutput.split(separator: "\n")
+
+            if !lines.isEmpty {
+                for line in lines {
+                    let path = String(line)
+                    if excludePaths.contains(where: { path.hasPrefix($0) }) { continue }
+                    let url = URL(fileURLWithPath: path)
+                    guard let attrs = try? fm.attributesOfItem(atPath: path),
+                          let size = attrs[.size] as? Int64,
+                          size >= minBytes else { continue }
+                    entries.append(FileEntry(url: url, sizeBytes: size, isDirectory: false))
+                }
+            }
+
+            // 2. Fallback: Unix find if Spotlight is disabled on target path
+            if entries.isEmpty {
+                var findArgs = [root.path, "-type", "f", "-size", "+\(minMB)M"]
+                for ex in exclude {
+                    findArgs += ["-not", "-path", ex.path + "/*"]
+                }
+                let findOutput = Shell.runNiced("/usr/bin/find", findArgs)
+                for line in findOutput.split(separator: "\n").prefix(limit * 2) {
+                    let path = String(line)
+                    let url = URL(fileURLWithPath: path)
+                    guard let attrs = try? fm.attributesOfItem(atPath: path),
+                          let size = attrs[.size] as? Int64 else { continue }
+                    entries.append(FileEntry(url: url, sizeBytes: size, isDirectory: false))
+                }
             }
 
             entries.sort { $0.sizeBytes > $1.sizeBytes }

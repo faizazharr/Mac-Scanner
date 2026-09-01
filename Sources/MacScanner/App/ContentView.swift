@@ -903,56 +903,111 @@ struct LargeFilesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Header & Size Presets
-            VStack(alignment: .leading, spacing: 10) {
+            // Header Controls: Scope, Threshold & Scan Action
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
-                    Text("Threshold:")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-
-                    // Presets
-                    ForEach(sizePresets, id: \.self) { mb in
-                        Button {
-                            vm.minMB = mb
-                            vm.send(.rescan)
-                        } label: {
-                            Text(mb >= 1000 ? "\(mb / 1000) GB" : "\(mb) MB")
-                                .font(.caption)
-                                .fontWeight(vm.minMB == mb ? .bold : .regular)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(vm.minMB == mb ? Color.purple.opacity(0.2) : Color.secondary.opacity(0.08))
-                                .foregroundStyle(vm.minMB == mb ? Color.purple : Color.primary)
-                                .clipShape(Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .strokeBorder(vm.minMB == mb ? Color.purple.opacity(0.4) : Color.clear, lineWidth: 1)
-                                )
+                    // Scope Picker
+                    Menu {
+                        ForEach(LargeFilesViewModel.ScanScope.allCases) { scope in
+                            Button {
+                                if scope == .custom {
+                                    chooseCustomFolder()
+                                } else {
+                                    vm.scanScope = scope
+                                    vm.send(.rescan)
+                                }
+                            } label: {
+                                Label(scope.rawValue, systemImage: scope.icon)
+                            }
                         }
-                        .buttonStyle(.plain)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: vm.scanScope.icon)
+                                .font(.caption)
+                                .foregroundStyle(.purple)
+                            Text(vm.scanScope == .custom && vm.customScopeURL != nil ? vm.customScopeURL!.lastPathComponent : vm.scanScope.rawValue)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .glassCard()
+                    }
+                    .menuStyle(.borderlessButton)
+                    .frame(width: 170)
+
+                    Divider().frame(height: 18)
+
+                    // Size Threshold Presets
+                    Text("Threshold:")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 6) {
+                        ForEach(sizePresets, id: \.self) { mb in
+                            Button {
+                                vm.minMB = mb
+                                vm.send(.rescan)
+                            } label: {
+                                Text(mb >= 1000 ? "\(mb / 1000) GB" : "\(mb) MB")
+                                    .font(.caption2)
+                                    .fontWeight(vm.minMB == mb ? .bold : .medium)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(vm.minMB == mb ? Color.purple.opacity(0.2) : Color.secondary.opacity(0.08))
+                                    .foregroundStyle(vm.minMB == mb ? Color.purple : Color.primary)
+                                    .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .strokeBorder(vm.minMB == mb ? Color.purple.opacity(0.4) : Color.clear, lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
 
                     Spacer()
 
-                    if vm.isScanning {
-                        ProgressView().controlSize(.small)
-                        Text("Searching home folder…").font(.caption).foregroundStyle(.secondary)
+                    // Sort Picker
+                    Picker("Sort", selection: $vm.sortOption) {
+                        ForEach(LargeFilesViewModel.SortOption.allCases) { opt in
+                            Text(opt.rawValue).tag(opt)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .frame(width: 155)
 
+                    // Scan / Refresh Button
                     Button {
                         vm.send(.rescan)
                     } label: {
-                        Label("Scan Now", systemImage: "arrow.clockwise")
-                            .font(.caption)
+                        HStack(spacing: 5) {
+                            if vm.isScanning {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            Text(vm.isScanning ? "Scanning…" : "Scan Now")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                        }
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.purple)
                     .controlSize(.small)
+                    .disabled(vm.isScanning)
                 }
 
-                // Search & Category Filters
+                // Filter & Search Row
                 HStack(spacing: 12) {
-                    SearchField(placeholder: "Search file name or path…", text: $vm.searchQuery)
-                        .frame(maxWidth: 300)
+                    SearchField(placeholder: "Search file name or extension…", text: $vm.searchQuery)
+                        .frame(maxWidth: 280)
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
@@ -973,6 +1028,10 @@ struct LargeFilesView: View {
                                     )
                                     .foregroundStyle(vm.selectedCategory == cat ? cat.color : .primary)
                                     .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .strokeBorder(vm.selectedCategory == cat ? cat.color.opacity(0.4) : Color.clear, lineWidth: 1)
+                                    )
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -981,12 +1040,46 @@ struct LargeFilesView: View {
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 16)
+            .padding(.top, 14)
 
-            // Total Found Summary Bar
-            if !vm.filteredFiles.isEmpty {
+            // Category Summary Analytics Bar
+            if !vm.categoryBreakdown.isEmpty && !vm.isScanning {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(vm.categoryBreakdown, id: \.category) { item in
+                            HStack(spacing: 8) {
+                                ZStack {
+                                    Circle()
+                                        .fill(item.category.color.opacity(0.15))
+                                        .frame(width: 26, height: 26)
+                                    Image(systemName: item.category.icon)
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(item.category.color)
+                                }
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(item.category.rawValue)
+                                        .font(.system(size: 11, weight: .bold))
+                                    Text("\(item.count) files • \(ByteFormat.string(item.totalBytes))")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .glassCard(tint: item.category.color, opacity: 0.08)
+                            .onTapGesture {
+                                vm.selectedCategory = (vm.selectedCategory == item.category ? .all : item.category)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                }
+            }
+
+            // Status & Batch Actions Bar
+            if !vm.filteredFiles.isEmpty && !vm.isScanning {
                 HStack {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         Text("\(vm.filteredFiles.count) Large Files Found")
                             .font(.subheadline)
                             .fontWeight(.bold)
@@ -1003,6 +1096,7 @@ struct LargeFilesView: View {
                         } label: {
                             Label("Trash Selected (\(ByteFormat.string(vm.totalSelectedBytes)))", systemImage: "trash.fill")
                                 .font(.caption)
+                                .fontWeight(.semibold)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.red)
@@ -1021,8 +1115,10 @@ struct LargeFilesView: View {
                 .padding(.horizontal, 18)
             }
 
-            // Files List
-            if !vm.filteredFiles.isEmpty {
+            // Content Area: Scanning State, Results List, or Empty State
+            if vm.isScanning {
+                scanningHeroView
+            } else if !vm.filteredFiles.isEmpty {
                 List(vm.filteredFiles) { file in
                     let isSelected = vm.selectedIDs.contains(file.id)
                     HStack(spacing: 12) {
@@ -1038,7 +1134,7 @@ struct LargeFilesView: View {
                         ZStack {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .fill(file.category.color.opacity(0.15))
-                                .frame(width: 30, height: 30)
+                                .frame(width: 32, height: 32)
                             Image(systemName: file.category.icon)
                                 .font(.caption.bold())
                                 .foregroundStyle(file.category.color)
@@ -1059,7 +1155,7 @@ struct LargeFilesView: View {
 
                         Spacer()
 
-                        Pill(text: file.url.pathExtension.uppercased(), color: file.category.color)
+                        Pill(text: file.url.pathExtension.isEmpty ? "FILE" : file.url.pathExtension.uppercased(), color: file.category.color)
 
                         Text(file.sizeString)
                             .font(.system(.subheadline, design: .monospaced))
@@ -1087,33 +1183,31 @@ struct LargeFilesView: View {
                             .help("Move to Trash")
                         }
                     }
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 4)
                     .contentShape(Rectangle())
                     .contextMenu {
                         Button("Reveal in Finder") { FileActions.reveal(file.url) }
                         Button("Copy Full Path") { FileActions.copyPath(file.url) }
+                        Divider()
                         Button("Move to Trash", role: .destructive) { pendingTrash = file.url }
                     }
                 }
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
-            } else if !vm.isScanning {
+            } else {
                 VStack(spacing: 12) {
                     Spacer()
-                    Image(systemName: "doc.badge.gearshape")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.secondary)
-                    Text("No files found matching the current threshold and filters.")
+                    Image(systemName: "sparkles.rectangle.stack.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.purple.opacity(0.8))
+                    Text("No large files found matching your filter.")
                         .font(.headline)
-                        .foregroundStyle(.secondary)
-                    Text("Try lowering the threshold (e.g. 100 MB).")
+                    Text("Try choosing a lower threshold (e.g. 100 MB) or changing the search scope.")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-            } else {
-                Spacer()
             }
         }
         .modifier(TrashConfirmation(pendingURL: $pendingTrash) { url in
@@ -1132,9 +1226,49 @@ struct LargeFilesView: View {
             Text("These items will be moved to macOS Trash and can be restored anytime.")
         }
         .onAppear {
-            if vm.files.isEmpty {
-                vm.send(.rescan)
+            vm.send(.appear)
+        }
+    }
+
+    // MARK: - Animated Scanning Hero State
+
+    private var scanningHeroView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.12))
+                    .frame(width: 80, height: 80)
+
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.purple)
             }
+
+            VStack(spacing: 4) {
+                Text("Scanning for Files ≥ \(vm.minMB >= 1000 ? "\(vm.minMB / 1000) GB" : "\(vm.minMB) MB")…")
+                    .font(.headline)
+                    .fontWeight(.bold)
+
+                Text("Searching \(vm.scanScope.rawValue) using fast Spotlight index…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func chooseCustomFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Scan Folder"
+        if panel.runModal() == .OK, let url = panel.url {
+            vm.send(.setCustomScope(url))
         }
     }
 }
