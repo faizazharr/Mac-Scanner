@@ -56,16 +56,27 @@ struct ContentView: View {
     @State private var selection: ScreenerTab = .home
     @StateObject private var designerBrowserVM = DesignerBrowserViewModel()
     @StateObject private var recommendationsVM = RecommendationsViewModel()
+    @StateObject private var deviceTestingEngine = DeviceTestingEngine()
 
     var body: some View {
-        NavigationSplitView {
-            sidebar
-                .navigationSplitViewColumnWidth(min: 220, ideal: 245, max: 285)
-        } detail: {
-            detailView
-                .frame(minWidth: 780, minHeight: 600)
-                .background(Color(nsColor: .windowBackgroundColor))
+        ZStack {
+            NavigationSplitView {
+                sidebar
+                    .navigationSplitViewColumnWidth(min: 220, ideal: 245, max: 285)
+            } detail: {
+                detailView
+                    .frame(minWidth: 780, minHeight: 600)
+                    .background(Color(nsColor: .windowBackgroundColor))
+            }
+
+            if deviceTestingEngine.isScreenTestActive {
+                DeadPixelFullscreenView(engine: deviceTestingEngine)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .zIndex(99999)
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: deviceTestingEngine.isScreenTestActive)
         .withToastOverlay()
         .onChange(of: selection) { oldValue, newValue in
             if newValue == .designerBrowsers {
@@ -188,7 +199,7 @@ struct ContentView: View {
         case .screening:
             ScreeningView(deviceVM: deviceVM)
         case .deviceTesting:
-            DeviceTestingView(deviceVM: deviceVM)
+            DeviceTestingView(engine: deviceTestingEngine, deviceVM: deviceVM)
         }
     }
 }

@@ -7,7 +7,7 @@ import AppKit
 /// Hardware Diagnostics & Device Functionality Suite:
 /// Tests Screen Dead Pixels, Stereo Speakers, Microphone, Keyboard Matrix, Trackpad Haptics, and Battery.
 struct DeviceTestingView: View {
-    @StateObject private var engine = DeviceTestingEngine()
+    @ObservedObject var engine: DeviceTestingEngine
     @ObservedObject var deviceVM: DeviceInfoViewModel
 
     @State private var trackpadClickCount = 0

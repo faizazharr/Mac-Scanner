@@ -488,8 +488,7 @@ final class DeviceTestingEngine: ObservableObject {
     @Published var isHUDVisible: Bool = true
     @Published var motionSpeed: Double = 480.0 // pixels per second
 
-    private var fullscreenWindow: DeadPixelWindow?
-    private weak var previousMainWindow: NSWindow?
+    private var wasWindowOriginallyFullscreen: Bool = false
     private var keyEventMonitor: Any?
 
     var currentCategoryPatterns: [ScreenTestItem] {
@@ -510,12 +509,30 @@ final class DeviceTestingEngine: ObservableObject {
         currentPatternIndex = 0
         isHUDVisible = true
         isScreenTestActive = true
-        presentFullscreenWindow()
+
+        // Seamlessly enter native macOS Fullscreen on the main app window
+        if let window = NSApp.windows.first(where: { $0.canBecomeKey && $0.isVisible }) {
+            if !window.styleMask.contains(.fullScreen) {
+                wasWindowOriginallyFullscreen = false
+                window.toggleFullScreen(nil)
+            } else {
+                wasWindowOriginallyFullscreen = true
+            }
+        }
+
+        startKeyEventMonitoring()
     }
 
     func exitDeadPixelTester() {
         isScreenTestActive = false
-        closeFullscreenWindow()
+        stopKeyEventMonitoring()
+
+        // Seamlessly restore normal window state if entered for the test
+        if let window = NSApp.windows.first(where: { $0.canBecomeKey && $0.isVisible }),
+           window.styleMask.contains(.fullScreen),
+           !wasWindowOriginallyFullscreen {
+            window.toggleFullScreen(nil)
+        }
     }
 
     func selectCategory(_ category: ScreenTestCategory) {
@@ -550,62 +567,18 @@ final class DeviceTestingEngine: ObservableObject {
         }
     }
 
-    private func presentFullscreenWindow() {
-        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
-
-        // Remember the active main window before opening fullscreen overlay
-        self.previousMainWindow = NSApp.windows.first(where: { $0.isVisible && $0 !== self.fullscreenWindow && $0.canBecomeKey }) ?? NSApp.mainWindow ?? NSApp.keyWindow
-
-        // Close any existing window first
-        closeFullscreenWindow()
-
-        let window = DeadPixelWindow(
-            contentRect: screen.frame,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false,
-            screen: screen
-        )
-        window.level = .floating
-        window.isOpaque = true
-        window.hasShadow = false
-        window.backgroundColor = .black
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        window.engine = self
-        window.contentView = NSHostingView(rootView: DeadPixelFullscreenView(engine: self))
-
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.makeFirstResponder(window.contentView)
-
-        self.fullscreenWindow = window
-
-        // Extra layer of event monitoring for foolproof keyboard responsiveness
+    private func startKeyEventMonitoring() {
+        stopKeyEventMonitoring()
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, self.isScreenTestActive else { return event }
             return self.handleFullscreenKeyDown(event) ? nil : event
         }
     }
 
-    private func closeFullscreenWindow() {
+    private func stopKeyEventMonitoring() {
         if let monitor = keyEventMonitor {
             NSEvent.removeMonitor(monitor)
             keyEventMonitor = nil
-        }
-        if let win = fullscreenWindow {
-            win.orderOut(nil)
-            win.close()
-            fullscreenWindow = nil
-        }
-
-        // Return focus immediately back to the main MacScanner application window
-        DispatchQueue.main.async { [weak self] in
-            if let hostWin = self?.previousMainWindow, hostWin.isVisible {
-                hostWin.makeKeyAndOrderFront(nil)
-            } else if let fallbackWin = NSApp.windows.first(where: { $0.canBecomeKey && $0.isVisible }) {
-                fallbackWin.makeKeyAndOrderFront(nil)
-            }
-            NSApp.activate(ignoringOtherApps: true)
         }
     }
 
@@ -1347,26 +1320,6 @@ struct ScreenTestCanvasView: View {
             }
         }
         .drawingGroup()
-    }
-}
-
-/// Borderless fullscreen window that guarantees key-window status and immediate ESC dismissal.
-final class DeadPixelWindow: NSWindow {
-    weak var engine: DeviceTestingEngine?
-
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-
-    override func cancelOperation(_ sender: Any?) {
-        // Native macOS ESC handler at AppKit window hierarchy
-        engine?.exitDeadPixelTester()
-    }
-
-    override func keyDown(with event: NSEvent) {
-        if let eng = engine, eng.handleFullscreenKeyDown(event) {
-            return
-        }
-        super.keyDown(with: event)
     }
 }
 
