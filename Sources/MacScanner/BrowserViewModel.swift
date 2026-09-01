@@ -3,14 +3,9 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 /// Drives the Folder Browser tab.
-///
-/// All mutations go through `send(_:)` — a single dispatch point for every
-/// user-raised event (navigation, rescan, trash) — instead of a grab-bag of
-/// public methods called directly from the view. Every published property is
-/// `private(set)`: the view can only read state and raise actions, never
-/// mutate it directly, so every state change is traceable to one call site.
 @MainActor
 final class BrowserViewModel: ObservableObject {
 
@@ -34,15 +29,20 @@ final class BrowserViewModel: ObservableObject {
     @Published private(set) var volumeTotal: Int64 = 0
     @Published private(set) var volumeFree: Int64 = 0
 
-    /// Per-folder scan cache, keyed by path — revisiting a folder (breadcrumb,
-    /// switching tabs and back) shows the last result instantly instead of
-    /// re-running `du` over it again. `.rescan` bypasses this on purpose.
+    @Published var selectedCategory: FileCategory = .all
+    @Published var searchQuery: String = ""
+
+    var filteredEntries: [FileEntry] {
+        entries.filter { entry in
+            let matchesCategory = selectedCategory == .all || entry.category == selectedCategory
+            let matchesQuery = searchQuery.isEmpty || entry.name.localizedCaseInsensitiveContains(searchQuery)
+            return matchesCategory && matchesQuery
+        }
+    }
+
+    /// Per-folder scan cache, keyed by path.
     private var cache: [String: [FileEntry]] = [:]
-
-    /// Folders currently being scanned — bouncing in and out of a folder
-    /// before its scan finishes must not spawn a second redundant scan.
     private var inFlightScans: Set<String> = []
-
     private var didAppear = false
 
     init() {
@@ -69,20 +69,19 @@ final class BrowserViewModel: ObservableObject {
             navigate(to: currentDirectory.deletingLastPathComponent())
 
         case .moveToTrash(let url):
-            try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
+            do {
+                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                ToastManager.shared.show("Moved item to Trash", icon: "trash.fill", tint: .green)
+            } catch {
+                ToastManager.shared.show("Failed to move to Trash", icon: "exclamationmark.triangle.fill", tint: .red)
+            }
             scan()
         }
     }
 
-    /// Every ancestor of `currentDirectory`, from "/" down to the current folder,
-    /// so the breadcrumb always reflects the true path — not just navigation history.
     var pathChain: [URL] {
         var chain: [URL] = []
         var url = currentDirectory.standardizedFileURL
-        // Bound by pathComponents count, not string equality — a trailing-slash
-        // or percent-encoding mismatch between successive deletingLastPathComponent()
-        // calls can make `parent.path == url.path` never become true, spinning
-        // the main thread forever (this once pegged CPU and leaked memory).
         while url.pathComponents.count > 1 {
             chain.append(url)
             url = url.deletingLastPathComponent()
@@ -117,12 +116,7 @@ final class BrowserViewModel: ObservableObject {
         refreshVolumeInfo()
         let dir = currentDirectory
 
-        guard !inFlightScans.contains(dir.path) else {
-            // Already scanning this exact folder from an earlier visit (user
-            // bounced back in before it finished) — don't duplicate the work,
-            // the running scan will land here and cache it regardless.
-            return
-        }
+        guard !inFlightScans.contains(dir.path) else { return }
         inFlightScans.insert(dir.path)
 
         DiskScanner.scanChildren(
@@ -135,9 +129,6 @@ final class BrowserViewModel: ObservableObject {
             completion: { [weak self] final in
                 guard let self else { return }
                 self.inFlightScans.remove(dir.path)
-                // Always cache — even if the user already navigated elsewhere
-                // (e.g. clicked into a folder before this scan finished), so
-                // coming back to `dir` later is instant instead of rescanning.
                 self.cache[dir.path] = final
                 guard self.currentDirectory == dir else { return }
                 self.entries = final

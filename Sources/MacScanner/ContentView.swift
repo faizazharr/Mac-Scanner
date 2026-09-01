@@ -4,53 +4,183 @@
 import SwiftUI
 import AppKit
 
-/// The three tabs the app is organized into.
-enum ScreenerTab { case browser, recommendations, largeFiles }
+/// The five tabs the app is organized into.
+enum ScreenerTab: String, CaseIterable, Identifiable {
+    case home = "Home"
+    case browser = "Folder Browser"
+    case recommendations = "Recommendations"
+    case largeFiles = "Large Files"
+    case performance = "Performance"
 
-/// Root view: a tab bar over the three scanning modes. Owns the
-/// Recommendations view model directly (rather than letting `RecommendationsView`
-/// own it) so it can trigger that tab's first scan lazily, only once the tab
-/// is actually opened — scanning every tab up front pegs CPU hard enough
-/// that macOS can flag the app for excessive background CPU use.
-struct ContentView: View {
-    @State private var selection: ScreenerTab = .browser
-    @StateObject private var recommendationsVM = RecommendationsViewModel()
+    var id: String { rawValue }
 
-    var body: some View {
-        TabView(selection: $selection) {
-            BrowserView()
-                .tabItem { Label("Folder Browser", systemImage: "folder") }
-                .tag(ScreenerTab.browser)
-
-            RecommendationsView(vm: recommendationsVM)
-                .tabItem { Label("Cleanup Recommendations", systemImage: "sparkles") }
-                .tag(ScreenerTab.recommendations)
-
-            LargeFilesView()
-                .tabItem { Label("Large Files", systemImage: "doc.badge.gearshape") }
-                .tag(ScreenerTab.largeFiles)
+    var icon: String {
+        switch self {
+        case .home: return "house.fill"
+        case .browser: return "folder.fill"
+        case .recommendations: return "sparkles"
+        case .largeFiles: return "doc.badge.gearshape.fill"
+        case .performance: return "gauge.with.dots.needle.67percent"
         }
-        .padding()
-        .onChange(of: selection) { _, newValue in
-            if newValue == .recommendations {
-                recommendationsVM.send(.appearIfNeeded)
-            }
+    }
+
+    var color: Color {
+        switch self {
+        case .home: return .blue
+        case .browser: return .cyan
+        case .recommendations: return .green
+        case .largeFiles: return .purple
+        case .performance: return .orange
         }
     }
 }
 
-// MARK: - Shared row actions
+/// Root view: A sleek macOS Sidebar layout with glassmorphic styling,
+/// lazy tab activations, and global toast feedback overlay.
+struct ContentView: View {
+    @State private var selection: ScreenerTab = .home
+    @StateObject private var deviceVM = DeviceInfoViewModel()
+    @StateObject private var recommendationsVM = RecommendationsViewModel()
+    @StateObject private var performanceVM = PerformanceViewModel()
 
-/// Finder-adjacent actions any file/folder row can offer.
+    var body: some View {
+        NavigationSplitView {
+            sidebar
+                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 280)
+        } detail: {
+            detailView
+                .frame(minWidth: 780, minHeight: 600)
+                .background(Color(nsColor: .windowBackgroundColor))
+        }
+        .withToastOverlay()
+        .onChange(of: selection) { oldValue, newValue in
+            if newValue == .recommendations {
+                recommendationsVM.send(.appearIfNeeded)
+            }
+            if newValue == .performance {
+                performanceVM.send(.appear)
+            }
+            if oldValue == .performance {
+                performanceVM.send(.disappear)
+            }
+        }
+    }
+
+    // MARK: - Modern Sidebar Navigation
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // App Branding Header
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "sparkle.magnifyingglass")
+                        .font(.caption.bold())
+                        .foregroundStyle(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("MacScanner")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    Text("Disk & Health Monitor")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+
+            Divider().opacity(0.4)
+
+            // Nav Links
+            List(ScreenerTab.allCases, selection: $selection) { tab in
+                HStack(spacing: 10) {
+                    Image(systemName: tab.icon)
+                        .font(.body)
+                        .foregroundStyle(selection == tab ? tab.color : .secondary)
+                        .frame(width: 22)
+
+                    Text(tab.rawValue)
+                        .font(.subheadline)
+                        .fontWeight(selection == tab ? .semibold : .regular)
+
+                    Spacer()
+
+                    if tab == .recommendations && recommendationsVM.totalReclaimable > 0 {
+                        Pill(text: ByteFormat.string(recommendationsVM.totalReclaimable), color: .green)
+                    }
+                }
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
+                .tag(tab)
+            }
+            .listStyle(.sidebar)
+
+            Spacer()
+
+            // Quick Status Footer
+            if let device = deviceVM.device {
+                HStack(spacing: 8) {
+                    Image(systemName: "laptopcomputer")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                    Text(device.chip)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                    Pill(text: "OK", color: .green)
+                }
+                .padding(10)
+                .glassCard()
+                .padding(.horizontal, 10)
+                .padding(.bottom, 10)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var detailView: some View {
+        switch selection {
+        case .home:
+            HomeView(deviceVM: deviceVM) { selection = $0 }
+        case .browser:
+            BrowserView()
+        case .recommendations:
+            RecommendationsView(vm: recommendationsVM)
+        case .largeFiles:
+            LargeFilesView()
+        case .performance:
+            PerformanceView(vm: performanceVM, deviceVM: deviceVM)
+        }
+    }
+}
+
+// MARK: - Shared Actions
+
+@MainActor
 enum FileActions {
     static func reveal(_ url: URL) {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
+
+    static func copyPath(_ url: URL) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.path, forType: .string)
+        ToastManager.shared.show("Path copied to Clipboard", icon: "doc.on.doc.fill", tint: .blue)
+    }
 }
 
-/// Confirmation sheet shown before moving anything to the Trash. Reused by
-/// all three tabs; the actual deletion is delegated to the caller's
-/// `onConfirm` closure so each tab can route it through its own view model.
 struct TrashConfirmation: ViewModifier {
     @Binding var pendingURL: URL?
     var onConfirm: (URL) -> Void
@@ -70,168 +200,273 @@ struct TrashConfirmation: ViewModifier {
             }
             Button("Cancel", role: .cancel) { pendingURL = nil }
         } message: {
-            Text("This is reversible — the item goes to Trash, not permanently deleted.")
+            Text("This is completely reversible — the item goes to macOS Trash and is not permanently deleted.")
         }
     }
 }
 
-/// Compact search box: magnifying-glass icon, plain text field, and a clear
-/// button that only appears once there's something to clear. Shared by the
-/// Folder Browser and Large Files tabs.
 struct SearchField: View {
     let placeholder: String
     @Binding var text: String
 
     var body: some View {
-        HStack {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
+                .font(.subheadline)
             if !text.isEmpty {
                 Button {
                     text = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
             }
         }
-        .padding(6)
-        .background(Color.secondary.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .glassCard()
     }
 }
 
-// MARK: - Browser
+// MARK: - Browser Tab
 
-/// Folder Browser tab: drill into any folder, see a size breakdown (list +
-/// donut chart), search within the current folder, and act on any row
-/// (reveal in Finder / move to Trash).
 struct BrowserView: View {
     @StateObject private var vm = BrowserViewModel()
     @State private var pendingTrash: URL?
-    @State private var searchQuery = ""
-
-    private var filteredEntries: [FileEntry] {
-        guard !searchQuery.isEmpty else { return vm.entries }
-        return vm.entries.filter { $0.name.localizedCaseInsensitiveContains(searchQuery) }
-    }
+    @State private var hoveredEntryID: UUID?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Button {
-                    vm.send(.navigateUp)
-                } label: {
-                    Image(systemName: "chevron.up")
-                }
-                .disabled(vm.currentDirectory.path == "/")
-                .help("Go up one level")
+        VStack(alignment: .leading, spacing: 14) {
+            // Top Action Toolbar & Breadcrumbs
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Button {
+                        vm.send(.navigateUp)
+                    } label: {
+                        Image(systemName: "chevron.up")
+                    }
+                    .disabled(vm.currentDirectory.path == "/")
+                    .help("Go up one directory level")
 
-                Button {
-                    vm.send(.navigate(to: FileManager.default.homeDirectoryForCurrentUser))
-                } label: {
-                    Image(systemName: "house")
-                }
-                .help("Go to Home folder")
+                    Button {
+                        vm.send(.navigate(to: FileManager.default.homeDirectoryForCurrentUser))
+                    } label: {
+                        Image(systemName: "house.fill")
+                    }
+                    .help("Go to Home folder")
 
-                Spacer()
-                Button {
-                    chooseFolder()
-                } label: {
-                    Label("Choose Folder…", systemImage: "folder.badge.plus")
-                }
-                Button {
-                    vm.send(.rescan)
-                } label: {
-                    Label("Rescan", systemImage: "arrow.clockwise")
-                }
-            }
+                    breadcrumbBar
 
-            breadcrumbBar
-
-            Text(vm.currentDirectory.path)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
-                .lineLimit(1)
-                .truncationMode(.middle)
-
-            if vm.volumeTotal > 0 {
-                let used = vm.volumeTotal - vm.volumeFree
-                HStack {
-                    Text("Volume: \(ByteFormat.string(used)) used of \(ByteFormat.string(vm.volumeTotal)) — \(ByteFormat.string(vm.volumeFree)) free")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     Spacer()
-                    if vm.isScanning {
-                        ProgressView().controlSize(.small)
-                        Text("Scanning…").font(.caption).foregroundStyle(.secondary)
+
+                    Button {
+                        chooseFolder()
+                    } label: {
+                        Label("Choose Folder…", systemImage: "folder.badge.plus")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button {
+                        vm.send(.rescan)
+                    } label: {
+                        Label("Rescan", systemImage: "arrow.clockwise")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
+                // Volume Usage & Scan Status
+                if vm.volumeTotal > 0 {
+                    let used = vm.volumeTotal - vm.volumeFree
+                    HStack {
+                        Text("Volume Capacity: \(ByteFormat.string(used)) used / \(ByteFormat.string(vm.volumeFree)) free")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if vm.isScanning {
+                            ProgressView().controlSize(.small)
+                            Text("Calculating folder sizes…").font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
 
+            // Visual Size Donut Breakdown
             if !vm.entries.isEmpty {
                 SizeDonutChart(entries: vm.entries)
+                    .padding(.horizontal, 18)
             }
 
-            SearchField(placeholder: "Search in this folder", text: $searchQuery)
+            // Search & Category Filters
+            HStack(spacing: 12) {
+                SearchField(placeholder: "Search items in this directory…", text: $vm.searchQuery)
+                    .frame(maxWidth: 320)
 
-            if !filteredEntries.isEmpty {
-                let maxSize = filteredEntries.map(\.sizeBytes).max() ?? 1
-                List(filteredEntries) { entry in
-                    HStack(spacing: 10) {
-                        Image(systemName: entry.isDirectory ? "folder.fill" : "doc")
-                            .foregroundStyle(entry.isDirectory ? .blue : .secondary)
-                            .frame(width: 18)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(FileCategory.allCases, id: \.self) { cat in
+                            Button {
+                                vm.selectedCategory = cat
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: cat.icon)
+                                        .font(.caption2)
+                                    Text(cat.rawValue)
+                                        .font(.caption)
+                                }
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(
+                                    vm.selectedCategory == cat
+                                        ? cat.color.opacity(0.2)
+                                        : Color.secondary.opacity(0.08)
+                                )
+                                .foregroundStyle(vm.selectedCategory == cat ? cat.color : .primary)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .strokeBorder(vm.selectedCategory == cat ? cat.color.opacity(0.4) : Color.clear, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
 
-                        Text(entry.name)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+            // Items List
+            if !vm.filteredEntries.isEmpty {
+                let maxSize = vm.filteredEntries.map(\.sizeBytes).max() ?? 1
+                List(vm.filteredEntries) { entry in
+                    let isHovered = hoveredEntryID == entry.id
+                    HStack(spacing: 12) {
+                        // Category Icon
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(entry.category.color.opacity(0.15))
+                                .frame(width: 28, height: 28)
+                            Image(systemName: entry.isDirectory ? "folder.fill" : entry.category.icon)
+                                .font(.caption.bold())
+                                .foregroundStyle(entry.category.color)
+                        }
 
-                        if entry.isDirectory {
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
+                        VStack(alignment: .leading, spacing: 1) {
+                            HStack(spacing: 6) {
+                                Text(entry.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+
+                                if entry.isDirectory {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                            Text(entry.isDirectory ? "Folder" : entry.category.rawValue)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
                         }
 
                         Spacer()
 
-                        // Relative-size bar so the biggest space users pop out visually.
-                        let barWidth = 100 * CGFloat(entry.sizeBytes) / CGFloat(maxSize)
+                        // Proportional Gradient Size Bar
+                        let barWidth = 110 * CGFloat(entry.sizeBytes) / CGFloat(maxSize)
                         ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.secondary.opacity(0.1))
-                                .frame(width: 100, height: 8)
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.accentColor.opacity(0.35))
-                                .frame(width: max(barWidth, 2), height: 8)
+                            Capsule()
+                                .fill(Color.secondary.opacity(0.12))
+                                .frame(width: 110, height: 7)
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [entry.category.color.opacity(0.7), entry.category.color],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: max(barWidth, 3), height: 7)
                         }
-                        .frame(width: 100, height: 8)
+                        .frame(width: 110, height: 7)
 
                         Text(entry.sizeString)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 90, alignment: .trailing)
+                            .font(.system(.subheadline, design: .monospaced))
+                            .fontWeight(.semibold)
+                            .frame(width: 95, alignment: .trailing)
+
+                        // Quick Actions on Hover
+                        HStack(spacing: 4) {
+                            Button {
+                                FileActions.reveal(entry.url)
+                            } label: {
+                                Image(systemName: "arrow.up.forward.app")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Reveal in Finder")
+
+                            Button {
+                                FileActions.copyPath(entry.url)
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Copy Path")
+
+                            Button {
+                                pendingTrash = entry.url
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Move to Trash")
+                        }
+                        .opacity(isHovered ? 1.0 : 0.25)
+                        .frame(width: 75)
                     }
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 4)
                     .contentShape(Rectangle())
+                    .onHover { hoveredEntryID = $0 ? entry.id : nil }
                     .onTapGesture { open(entry) }
                     .contextMenu {
                         if entry.isDirectory {
-                            Button("Open") { open(entry) }
+                            Button("Open Folder") { open(entry) }
                         }
                         Button("Reveal in Finder") { FileActions.reveal(entry.url) }
+                        Button("Copy Full Path") { FileActions.copyPath(entry.url) }
+                        Divider()
                         Button("Move to Trash", role: .destructive) { pendingTrash = entry.url }
                     }
                 }
                 .listStyle(.inset)
+                .scrollContentBackground(.hidden)
             } else if !vm.isScanning {
-                ContentUnavailableIfSupported(
-                    text: searchQuery.isEmpty ? "No items found here." : "No matches for \"\(searchQuery)\"."
-                )
-                Spacer()
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "magnifyingglass.circle")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.secondary)
+                    Text(vm.searchQuery.isEmpty ? "No items found in this directory." : "No matches found for \"\(vm.searchQuery)\".")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
             } else {
                 Spacer()
             }
@@ -247,8 +482,6 @@ struct BrowserView: View {
         vm.send(.navigate(to: entry.url))
     }
 
-    /// Clickable path bar: every folder from the volume root down to the current
-    /// one, so it's always clear exactly where you are and how to jump back up.
     private var breadcrumbBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 4) {
@@ -257,16 +490,25 @@ struct BrowserView: View {
                     Button {
                         vm.send(.navigate(to: url))
                     } label: {
-                        Text(url.lastPathComponent.isEmpty ? "Macintosh HD" : url.lastPathComponent)
-                            .fontWeight(isCurrent ? .semibold : .regular)
-                            .foregroundStyle(isCurrent ? Color.primary : Color.accentColor)
+                        HStack(spacing: 4) {
+                            Image(systemName: url.path == "/" ? "internaldrive" : "folder")
+                                .font(.caption2)
+                            Text(url.lastPathComponent.isEmpty ? "Macintosh HD" : url.lastPathComponent)
+                                .font(.caption)
+                                .fontWeight(isCurrent ? .bold : .medium)
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(isCurrent ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08))
+                        .foregroundStyle(isCurrent ? Color.accentColor : Color.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                     .disabled(isCurrent)
 
                     if url.path != vm.pathChain.last?.path {
                         Image(systemName: "chevron.right")
-                            .font(.caption2)
+                            .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -285,160 +527,504 @@ struct BrowserView: View {
     }
 }
 
-/// Falls back to a plain Text on macOS versions without ContentUnavailableView.
-struct ContentUnavailableIfSupported: View {
-    let text: String
-    var body: some View {
-        if #available(macOS 14.0, *) {
-            ContentUnavailableView(text, systemImage: "tray")
-        } else {
-            Text(text).foregroundStyle(.secondary).padding()
-        }
-    }
-}
+// MARK: - Recommendations Tab
 
-// MARK: - Recommendations
-
-/// Cleanup Recommendations tab: a risk-tagged list of known cleanup targets
-/// (caches, build artifacts, backups, ...) that actually exist on this Mac.
 struct RecommendationsView: View {
     @ObservedObject var vm: RecommendationsViewModel
     @State private var pendingTrash: URL?
+    @State private var showBatchConfirm = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Common cleanup targets, checked against this Mac")
-                    .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            // Reclaim Hero Banner
+            heroReclaimBanner
+
+            // Filters & Actions Bar
+            HStack(spacing: 10) {
+                // Risk filter chips
+                HStack(spacing: 6) {
+                    filterChip(title: "All", isSelected: vm.selectedRisk == nil) {
+                        vm.selectedRisk = nil
+                    }
+                    ForEach(RiskLevel.allCases, id: \.self) { risk in
+                        filterChip(title: risk.rawValue, isSelected: vm.selectedRisk == risk, color: risk.color) {
+                            vm.selectedRisk = risk
+                        }
+                    }
+                }
+
                 Spacer()
+
                 if vm.isScanning {
                     ProgressView().controlSize(.small)
+                    Text("Scanning targets…").font(.caption).foregroundStyle(.secondary)
                 }
-                Button("Rescan") { vm.send(.rescan) }
+
+                Button {
+                    vm.send(.toggleSelectAllSafe)
+                } label: {
+                    Label("Select All Safe", systemImage: "checklist")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Button {
+                    vm.send(.rescan)
+                } label: {
+                    Label("Rescan", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .padding(.horizontal, 18)
+
+            // Recommendation Cards List
+            if !vm.filteredResults.isEmpty {
+                List(vm.filteredResults) { rec in
+                    let isSelected = vm.selectedIDs.contains(rec.id)
+                    HStack(alignment: .top, spacing: 14) {
+                        // Multi-select Checkbox
+                        if rec.risk != .manual {
+                            Button {
+                                if isSelected {
+                                    vm.selectedIDs.remove(rec.id)
+                                } else {
+                                    vm.selectedIDs.insert(rec.id)
+                                }
+                            } label: {
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(isSelected ? Color.green : Color.secondary.opacity(0.4))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 2)
+                        } else {
+                            Image(systemName: "hand.raised.fill")
+                                .font(.callout)
+                                .foregroundStyle(.red)
+                                .frame(width: 22)
+                                .padding(.top, 2)
+                        }
+
+                        // Icon
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(rec.risk.color.opacity(0.14))
+                                .frame(width: 34, height: 34)
+                            Image(systemName: rec.iconName)
+                                .font(.body.bold())
+                                .foregroundStyle(rec.risk.color)
+                        }
+
+                        // Info
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 8) {
+                                Text(rec.title)
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                Pill(text: rec.risk.rawValue, color: rec.risk.color, icon: rec.risk.icon)
+                                Pill(text: rec.category.rawValue, color: .secondary, icon: rec.category.icon)
+                            }
+                            Text(rec.explanation)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(rec.path.path)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+
+                        Spacer()
+
+                        // Size & Action Buttons
+                        VStack(alignment: .trailing, spacing: 6) {
+                            Text(rec.sizeBytes > 0 ? ByteFormat.string(rec.sizeBytes) : "—")
+                                .font(.system(.subheadline, design: .monospaced))
+                                .fontWeight(.bold)
+
+                            HStack(spacing: 6) {
+                                Button {
+                                    FileActions.reveal(rec.path)
+                                } label: {
+                                    Label("Reveal", systemImage: "arrow.up.forward.app")
+                                        .font(.caption2)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.mini)
+
+                                if rec.risk != .manual {
+                                    Button {
+                                        pendingTrash = rec.path
+                                    } label: {
+                                        Label("Trash", systemImage: "trash")
+                                            .font(.caption2)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.red)
+                                    .controlSize(.mini)
+                                }
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .glassCard(tint: isSelected ? .green : .secondary, opacity: isSelected ? 0.12 : 0.05)
+                    .listRowSeparator(.hidden)
+                    .contextMenu {
+                        Button("Reveal in Finder") { FileActions.reveal(rec.path) }
+                        Button("Copy Path") { FileActions.copyPath(rec.path) }
+                        if rec.risk != .manual {
+                            Button("Move to Trash", role: .destructive) { pendingTrash = rec.path }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+            } else if !vm.isScanning {
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.green)
+                    Text("No cleanup targets found in this category.")
+                        .font(.headline)
+                    Text("Your Mac is clean and organized.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                Spacer()
+            }
+        }
+        .modifier(TrashConfirmation(pendingURL: $pendingTrash) { url in
+            vm.send(.moveToTrash(url))
+        })
+        .confirmationDialog(
+            "Clean \(vm.selectedIDs.count) Selected Targets (\(ByteFormat.string(vm.totalSelectedBytes)))?",
+            isPresented: $showBatchConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Move Selected to Trash", role: .destructive) {
+                vm.send(.moveSelectedToTrash)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("These items will be moved to your Trash. Reversible anytime.")
+        }
+    }
+
+    private var heroReclaimBanner: some View {
+        HStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(Color.green.opacity(0.18))
+                    .frame(width: 54, height: 54)
+                Image(systemName: "sparkles")
+                    .font(.title2.bold())
+                    .foregroundStyle(.green)
             }
 
-            if !vm.results.isEmpty {
-                Text("Up to \(ByteFormat.string(vm.totalReclaimable)) reclaimable from Safe/Review items")
-                    .font(.subheadline)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Text(ByteFormat.string(vm.totalReclaimable))
+                        .font(.title.bold())
+                        .foregroundStyle(.green)
+                    Text("Safe to Reclaim")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                }
+                Text("Caches, developer build artifacts, simulator devices, and temporary logs.")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            List(vm.results) { rec in
-                HStack(alignment: .top) {
-                    riskDot(rec.risk)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(rec.title).bold()
-                            Text(rec.risk.rawValue)
-                                .font(.caption2)
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Color.secondary.opacity(0.15))
-                                .clipShape(Capsule())
-                        }
-                        Text(rec.explanation)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(rec.path.path)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                    Spacer()
-                    Text(rec.sizeBytes > 0 ? ByteFormat.string(rec.sizeBytes) : "—")
-                        .font(.system(.body, design: .monospaced))
+            Spacer()
+
+            if vm.totalSelectedBytes > 0 {
+                Button {
+                    showBatchConfirm = true
+                } label: {
+                    Label("Clean Selected (\(ByteFormat.string(vm.totalSelectedBytes)))", systemImage: "trash.fill")
+                        .fontWeight(.semibold)
                 }
-                .contentShape(Rectangle())
-                .contextMenu {
-                    Button("Reveal in Finder") { FileActions.reveal(rec.path) }
-                    if rec.risk != .manual {
-                        Button("Move to Trash", role: .destructive) { pendingTrash = rec.path }
-                    }
-                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .controlSize(.regular)
             }
-            .listStyle(.inset)
         }
-        .modifier(TrashConfirmation(pendingURL: $pendingTrash) { url in
-            vm.send(.moveToTrash(url))
-        })
+        .padding(18)
+        .glassCard(tint: .green, opacity: 0.10)
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
     }
 
-    private func riskDot(_ risk: RiskLevel) -> some View {
-        Circle()
-            .fill(color(for: risk))
-            .frame(width: 10, height: 10)
-            .padding(.top, 4)
-    }
-
-    private func color(for risk: RiskLevel) -> Color {
-        switch risk {
-        case .safe: return .green
-        case .caution: return .orange
-        case .manual: return .red
+    private func filterChip(title: String, isSelected: Bool, color: Color = .blue, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(isSelected ? .bold : .regular)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(isSelected ? color.opacity(0.2) : Color.secondary.opacity(0.08))
+                .foregroundStyle(isSelected ? color : .primary)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .strokeBorder(isSelected ? color.opacity(0.4) : Color.clear, lineWidth: 1)
+                )
         }
+        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Large Files
+// MARK: - Large Files Tab
 
-/// Large Files tab: every individual file at or above a chosen size
-/// threshold anywhere under the home folder (excluding Library/Trash, which
-/// the Recommendations tab already covers in aggregate).
 struct LargeFilesView: View {
     @StateObject private var vm = LargeFilesViewModel()
     @State private var pendingTrash: URL?
-    @State private var searchQuery = ""
+    @State private var showBatchConfirm = false
 
-    private var filteredFiles: [FileEntry] {
-        guard !searchQuery.isEmpty else { return vm.files }
-        return vm.files.filter {
-            $0.name.localizedCaseInsensitiveContains(searchQuery)
-                || $0.url.path.localizedCaseInsensitiveContains(searchQuery)
-        }
-    }
+    private let sizePresets: [Int] = [100, 250, 500, 1000, 2500, 5000]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Files ≥").font(.subheadline)
-                Stepper(value: $vm.minMB, in: 50...5000, step: 50) {
-                    Text("\(vm.minMB) MB")
-                }
-                .frame(width: 160)
-                Spacer()
-                if vm.isScanning {
-                    ProgressView().controlSize(.small)
-                    Text("Searching your home folder…").font(.caption).foregroundStyle(.secondary)
-                }
-                Button("Scan") { vm.send(.rescan) }
-            }
-            Text("Searches your home folder, excluding ~/Library and Trash (covered under Recommendations).")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 14) {
+            // Header & Size Presets
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
+                    Text("Threshold:")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
 
-            SearchField(placeholder: "Search by name or path", text: $searchQuery)
-
-            List(filteredFiles) { file in
-                HStack {
-                    Image(systemName: "doc")
-                    VStack(alignment: .leading) {
-                        Text(file.name)
-                        Text(file.url.deletingLastPathComponent().path)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                    // Presets
+                    ForEach(sizePresets, id: \.self) { mb in
+                        Button {
+                            vm.minMB = mb
+                            vm.send(.rescan)
+                        } label: {
+                            Text(mb >= 1000 ? "\(mb / 1000) GB" : "\(mb) MB")
+                                .font(.caption)
+                                .fontWeight(vm.minMB == mb ? .bold : .regular)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(vm.minMB == mb ? Color.purple.opacity(0.2) : Color.secondary.opacity(0.08))
+                                .foregroundStyle(vm.minMB == mb ? Color.purple : Color.primary)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .strokeBorder(vm.minMB == mb ? Color.purple.opacity(0.4) : Color.clear, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
                     }
+
                     Spacer()
-                    Text(file.sizeString)
-                        .font(.system(.body, design: .monospaced))
+
+                    if vm.isScanning {
+                        ProgressView().controlSize(.small)
+                        Text("Searching home folder…").font(.caption).foregroundStyle(.secondary)
+                    }
+
+                    Button {
+                        vm.send(.rescan)
+                    } label: {
+                        Label("Scan Now", systemImage: "arrow.clockwise")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .contentShape(Rectangle())
-                .contextMenu {
-                    Button("Reveal in Finder") { FileActions.reveal(file.url) }
-                    Button("Move to Trash", role: .destructive) { pendingTrash = file.url }
+
+                // Search & Category Filters
+                HStack(spacing: 12) {
+                    SearchField(placeholder: "Search file name or path…", text: $vm.searchQuery)
+                        .frame(maxWidth: 300)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(FileCategory.allCases, id: \.self) { cat in
+                                Button {
+                                    vm.selectedCategory = cat
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: cat.icon).font(.caption2)
+                                        Text(cat.rawValue).font(.caption)
+                                    }
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 5)
+                                    .background(
+                                        vm.selectedCategory == cat
+                                            ? cat.color.opacity(0.2)
+                                            : Color.secondary.opacity(0.08)
+                                    )
+                                    .foregroundStyle(vm.selectedCategory == cat ? cat.color : .primary)
+                                    .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
                 }
             }
-            .listStyle(.inset)
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
+
+            // Total Found Summary Bar
+            if !vm.filteredFiles.isEmpty {
+                HStack {
+                    HStack(spacing: 6) {
+                        Text("\(vm.filteredFiles.count) Large Files Found")
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                        Text("• Total: \(ByteFormat.string(vm.totalFilteredBytes))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if vm.totalSelectedBytes > 0 {
+                        Button {
+                            showBatchConfirm = true
+                        } label: {
+                            Label("Trash Selected (\(ByteFormat.string(vm.totalSelectedBytes)))", systemImage: "trash.fill")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                        .controlSize(.small)
+                    }
+
+                    Button {
+                        vm.send(.toggleSelectAll)
+                    } label: {
+                        Text(vm.selectedIDs.count == vm.filteredFiles.count ? "Deselect All" : "Select All")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 18)
+            }
+
+            // Files List
+            if !vm.filteredFiles.isEmpty {
+                List(vm.filteredFiles) { file in
+                    let isSelected = vm.selectedIDs.contains(file.id)
+                    HStack(spacing: 12) {
+                        Button {
+                            vm.send(.toggleSelect(file.id))
+                        } label: {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(isSelected ? Color.purple : Color.secondary.opacity(0.4))
+                        }
+                        .buttonStyle(.plain)
+
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(file.category.color.opacity(0.15))
+                                .frame(width: 30, height: 30)
+                            Image(systemName: file.category.icon)
+                                .font(.caption.bold())
+                                .foregroundStyle(file.category.color)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(file.name)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Text(file.url.deletingLastPathComponent().path)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+
+                        Spacer()
+
+                        Pill(text: file.url.pathExtension.uppercased(), color: file.category.color)
+
+                        Text(file.sizeString)
+                            .font(.system(.subheadline, design: .monospaced))
+                            .fontWeight(.bold)
+                            .frame(width: 90, alignment: .trailing)
+
+                        HStack(spacing: 6) {
+                            Button {
+                                FileActions.reveal(file.url)
+                            } label: {
+                                Image(systemName: "arrow.up.forward.app")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Reveal in Finder")
+
+                            Button {
+                                pendingTrash = file.url
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Move to Trash")
+                        }
+                    }
+                    .padding(.vertical, 3)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button("Reveal in Finder") { FileActions.reveal(file.url) }
+                        Button("Copy Full Path") { FileActions.copyPath(file.url) }
+                        Button("Move to Trash", role: .destructive) { pendingTrash = file.url }
+                    }
+                }
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
+            } else if !vm.isScanning {
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "doc.badge.gearshape")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.secondary)
+                    Text("No files found matching the current threshold and filters.")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("Try lowering the threshold (e.g. 100 MB).")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                Spacer()
+            }
         }
         .modifier(TrashConfirmation(pendingURL: $pendingTrash) { url in
             vm.send(.moveToTrash(url))
         })
+        .confirmationDialog(
+            "Move \(vm.selectedIDs.count) Files to Trash (\(ByteFormat.string(vm.totalSelectedBytes)))?",
+            isPresented: $showBatchConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Move to Trash", role: .destructive) {
+                vm.send(.moveSelectedToTrash)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("These items will be moved to macOS Trash and can be restored anytime.")
+        }
+        .onAppear {
+            if vm.files.isEmpty {
+                vm.send(.rescan)
+            }
+        }
     }
 }

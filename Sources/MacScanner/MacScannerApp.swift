@@ -9,7 +9,7 @@ struct MacScannerApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 900, minHeight: 600)
+                .frame(minWidth: 1040, minHeight: 600)
         }
         .windowResizability(.contentSize)
     }

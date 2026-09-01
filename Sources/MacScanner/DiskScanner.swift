@@ -13,24 +13,7 @@ enum DiskScanner {
     /// Mildly niced so it doesn't fight the UI thread, but not throttled hard —
     /// the earlier sluggishness was a runaway loop elsewhere, not `du` itself.
     static func size(of url: URL) -> Int64 {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/nice")
-        process.arguments = ["-n", "3", "/usr/bin/du", "-sk", url.path]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-        } catch {
-            return 0
-        }
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-
-        guard let output = String(data: data, encoding: .utf8) else { return 0 }
+        let output = Shell.runNiced("/usr/bin/du", ["-sk", url.path])
         let kb = output
             .split(separator: "\t")
             .first
@@ -96,38 +79,20 @@ enum DiskScanner {
     /// Finds files at or above `minBytes` under `root`, skipping the given subpaths.
     static func findLargeFiles(root: URL, minMB: Int, exclude: [URL], limit: Int = 200, completion: @escaping ([FileEntry]) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/nice")
-            var args = ["-n", "3", "/usr/bin/find", root.path, "-type", "f", "-size", "+\(minMB)M"]
+            var args = [root.path, "-type", "f", "-size", "+\(minMB)M"]
             for ex in exclude {
                 args += ["-not", "-path", ex.path + "/*"]
             }
-            process.arguments = args
-
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = Pipe()
+            let output = Shell.runNiced("/usr/bin/find", args)
 
             var entries: [FileEntry] = []
-            do {
-                try process.run()
-            } catch {
-                DispatchQueue.main.async { completion([]) }
-                return
-            }
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-
-            if let output = String(data: data, encoding: .utf8) {
-                let fm = FileManager.default
-                for line in output.split(separator: "\n").prefix(limit * 4) {
-                    let path = String(line)
-                    let url = URL(fileURLWithPath: path)
-                    guard let attrs = try? fm.attributesOfItem(atPath: path),
-                          let size = attrs[.size] as? Int64 else { continue }
-                    entries.append(FileEntry(url: url, sizeBytes: size, isDirectory: false))
-                }
+            let fm = FileManager.default
+            for line in output.split(separator: "\n").prefix(limit * 4) {
+                let path = String(line)
+                let url = URL(fileURLWithPath: path)
+                guard let attrs = try? fm.attributesOfItem(atPath: path),
+                      let size = attrs[.size] as? Int64 else { continue }
+                entries.append(FileEntry(url: url, sizeBytes: size, isDirectory: false))
             }
 
             entries.sort { $0.sizeBytes > $1.sizeBytes }

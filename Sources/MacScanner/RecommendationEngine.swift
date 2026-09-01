@@ -11,76 +11,90 @@ enum RecommendationEngine {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let lib = home.appendingPathComponent("Library")
 
-        var list: [(String, URL, String, RiskLevel)] = [
+        let list: [(String, URL, String, RiskLevel, RecommendationCategory, String)] = [
             ("User Cache Files", lib.appendingPathComponent("Caches"),
-             "App and system caches. Regenerated automatically as needed.", .safe),
+             "App and system caches. Safe to clear; regenerated automatically as needed.",
+             .safe, .cache, "sparkles"),
 
             ("Trash", home.appendingPathComponent(".Trash"),
-             "Already deleted files waiting for permanent removal.", .safe),
+             "Already deleted files waiting for permanent emptying.",
+             .safe, .cache, "trash.fill"),
 
             ("Xcode DerivedData", lib.appendingPathComponent("Developer/Xcode/DerivedData"),
-             "Build intermediates. Safe to delete, Xcode rebuilds on next build.", .safe),
+             "Build intermediates and index caches. Xcode rebuilds these automatically on next build.",
+             .safe, .developer, "hammer.fill"),
 
             ("Xcode Archives", lib.appendingPathComponent("Developer/Xcode/Archives"),
-             "Old app archives from Xcode Organizer. Check you don't need them for App Store re-submission.", .caution),
+             "Old app build archives from Xcode Organizer. Safe to delete if not needed for symbolication.",
+             .caution, .developer, "archivebox.fill"),
 
             ("iOS/Simulator Devices", lib.appendingPathComponent("Developer/CoreSimulator/Devices"),
-             "Simulator disk images. Safe to erase unused simulators via Xcode > Devices.", .caution),
+             "Simulator disk images and installed runtime apps. Erase unused simulators to reclaim massive space.",
+             .caution, .developer, "iphone.gen3"),
 
             ("Homebrew Cache", lib.appendingPathComponent("Caches/Homebrew"),
-             "Downloaded package archives. Run `brew cleanup` instead of deleting manually.", .safe),
+             "Downloaded package archives and bottles.",
+             .safe, .developer, "mug.fill"),
 
             ("npm Cache", home.appendingPathComponent(".npm"),
-             "Downloaded npm package tarballs. Run `npm cache clean --force` instead of deleting manually.", .safe),
+             "Downloaded npm package tarballs and metadata cache.",
+             .safe, .developer, "shippingbox.fill"),
 
             ("Yarn Cache", lib.appendingPathComponent("Caches/Yarn"),
-             "Downloaded yarn package cache.", .safe),
+             "Downloaded Yarn package cache.",
+             .safe, .developer, "cube.box.fill"),
 
             ("pip Cache", lib.appendingPathComponent("Caches/pip"),
-             "Downloaded Python package cache.", .safe),
+             "Downloaded Python package wheels and archives.",
+             .safe, .developer, "chevron.left.forwardslash.chevron.right"),
 
             ("CocoaPods Cache", home.appendingPathComponent(".cocoapods/repos"),
-             "CocoaPods spec repos and downloaded pods.", .caution),
+             "CocoaPods spec repos and downloaded pods.",
+             .caution, .developer, "puzzlepiece.extension.fill"),
 
             ("Docker Data", lib.appendingPathComponent("Containers/com.docker.docker"),
-             "Docker Desktop images, containers, volumes. Deleting removes all local images/containers.", .caution),
+             "Docker Desktop container layers, virtual disk (raw.qcow2/Docker.raw), and volumes.",
+             .caution, .developer, "shippingbox.and.arrow.backward.fill"),
 
             ("iOS Device Backups", lib.appendingPathComponent("Application Support/MobileSync/Backup"),
-             "Full iPhone/iPad backups from Finder/iTunes. Often huge — verify you don't need them before deleting.", .caution),
+             "Full iPhone and iPad backups created via Finder/iTunes.",
+             .caution, .backup, "ipad.and.iphone"),
 
             ("Mail Downloads", lib.appendingPathComponent("Containers/com.apple.mail/Data/Library/Mail Downloads"),
-             "Cached email attachments. Safe to delete, re-downloads on open.", .safe),
+             "Cached email attachments. Safe to delete; re-downloads when you reopen the email.",
+             .safe, .cache, "envelope.badge.shield.half.filled"),
 
-            ("System Logs", lib.appendingPathComponent("Logs"),
-             "App and diagnostic logs. Safe to delete.", .safe),
-
-            ("Application Support (review)", lib.appendingPathComponent("Application Support"),
-             "Mixed: app data, some large caches disguised as support files. Inspect subfolders before deleting anything.", .manual),
-
-            ("Downloads Folder", home.appendingPathComponent("Downloads"),
-             "Installers/files you downloaded. Sort by date, remove what you no longer need.", .manual),
-
-            ("Desktop", home.appendingPathComponent("Desktop"),
-             "Files on your Desktop. Worth a manual look if unusually large.", .manual),
-
-            ("Photos Library", home.appendingPathComponent("Pictures/Photos Library.photoslibrary"),
-             "Your Photos library. Do not delete — consider offloading originals to iCloud instead.", .manual),
-
-            ("Time Machine Local Snapshots", URL(fileURLWithPath: "/System/Volumes/Data/.MobileBackups"),
-             "Local Time Machine snapshots macOS manages automatically; usually not directly deletable.", .manual),
+            ("System & Diagnostic Logs", lib.appendingPathComponent("Logs"),
+             "App diagnostic logs and crash logs. Safe to delete.",
+             .safe, .logs, "doc.text.magnifyingglass"),
 
             ("Adobe Media Cache", lib.appendingPathComponent("Application Support/Adobe/Common"),
-             "Adobe apps' media cache files.", .caution),
+             "Adobe Premiere / After Effects peak files and audio scratch caches.",
+             .caution, .cache, "photo.stack.fill"),
 
             ("Xcode iOS DeviceSupport", lib.appendingPathComponent("Developer/Xcode/iOS DeviceSupport"),
-             "Debug symbols per iOS version connected to Xcode. Safe to delete old OS versions you no longer debug on.", .safe),
+             "Debug symbols per iOS device connected to Xcode. Safe to delete old OS versions you no longer test.",
+             .safe, .developer, "wrench.and.screwdriver.fill"),
+
+            ("Application Support (Inspect)", lib.appendingPathComponent("Application Support"),
+             "Mixed application data. Contains app configurations as well as large leftover caches.",
+             .manual, .user, "folder.badge.gearshape"),
+
+            ("Downloads Folder", home.appendingPathComponent("Downloads"),
+             "Installers, DMGs, and files downloaded from browsers.",
+             .manual, .user, "arrow.down.circle.fill"),
+
+            ("Desktop", home.appendingPathComponent("Desktop"),
+             "Files accumulated on your Desktop workspace.",
+             .manual, .user, "menubar.dock.rectangle"),
+
+            ("Photos Library", home.appendingPathComponent("Pictures/Photos Library.photoslibrary"),
+             "Your personal Photos library. Do not delete — consider enabling Optimize Mac Storage in iCloud.",
+             .manual, .user, "photo.on.rectangle.angled")
         ]
 
-        // Deduplicate in case of path overlaps (defensive, not expected).
-        list.removeAll { _ in false }
-
-        return list.map { title, url, explanation, risk in
-            Recommendation(title: title, path: url, explanation: explanation, risk: risk)
+        return list.map { title, url, explanation, risk, category, icon in
+            Recommendation(title: title, path: url, explanation: explanation, risk: risk, category: category, iconName: icon)
         }
     }
 

@@ -17,6 +17,7 @@ mkdir -p "$APP_DIR/Contents/Resources"
 
 cp "$BIN_PATH" "$APP_DIR/Contents/MacOS/MacScanner"
 cp Resources/Info.plist "$APP_DIR/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
 
 # Sign with a real (Apple Development) identity, not ad-hoc. Two reasons:
 # 1. Without ANY signature, RunningBoard/symptomsd treat this as a stray
