@@ -1,0 +1,33 @@
+name: Release
+
+# Builds MacScanner.app on a GitHub-hosted macOS runner and attaches it as a
+# downloadable zip to a GitHub Release, whenever a version tag is pushed.
+# This is what makes the app installable for someone who doesn't have Xcode
+# or Swift — they download the zip from the Releases page, no build step.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch: {}
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build MacScanner.app
+        run: |
+          chmod +x Scripts/build_app.sh
+          ./Scripts/build_app.sh
+
+      - name: Zip the app bundle
+        run: |
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent MacScanner.app MacScanner.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/MacScanner.zip
+          generate_release_notes: true
