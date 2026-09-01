@@ -314,7 +314,9 @@ final class DeviceTestingEngine: ObservableObject {
             self.playerNode = player
 
             audioStopTimer = Timer.scheduledTimer(withTimeInterval: duration + 0.1, repeats: false) { [weak self] _ in
-                Task { @MainActor in self?.stopAudio() }
+                Task { @MainActor [weak self] in
+                    self?.stopAudio()
+                }
             }
         } catch {
             stopAudio()
@@ -363,7 +365,9 @@ final class DeviceTestingEngine: ObservableObject {
             self.playerNode = player
 
             audioStopTimer = Timer.scheduledTimer(withTimeInterval: duration + 0.1, repeats: false) { [weak self] _ in
-                Task { @MainActor in self?.stopAudio() }
+                Task { @MainActor [weak self] in
+                    self?.stopAudio()
+                }
             }
         } catch {
             stopAudio()
@@ -389,12 +393,13 @@ final class DeviceTestingEngine: ObservableObject {
         try? FileManager.default.removeItem(at: micTempURL)
 
         AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
                 guard granted else {
                     ToastManager.shared.show("Izin mikrofon diperlukan", icon: "mic.slash.fill", tint: .orange)
                     return
                 }
-                self?.beginMicRecording()
+                self.beginMicRecording()
             }
         }
     }
@@ -420,9 +425,10 @@ final class DeviceTestingEngine: ObservableObject {
             self.isRecordingMic = true
 
             micLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self = self, let rec = self.micRecorder, rec.isRecording else {
-                        self?.finishMicRecording()
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    guard let rec = self.micRecorder, rec.isRecording else {
+                        self.finishMicRecording()
                         return
                     }
                     rec.updateMeters()
@@ -451,7 +457,7 @@ final class DeviceTestingEngine: ObservableObject {
             player.play()
 
             Timer.scheduledTimer(withTimeInterval: player.duration + 0.2, repeats: false) { [weak self] _ in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     self?.isPlayingLoopback = false
                     self?.loopbackPlayer = nil
                 }

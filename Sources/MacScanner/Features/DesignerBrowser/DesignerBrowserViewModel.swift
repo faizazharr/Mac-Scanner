@@ -85,37 +85,32 @@ final class DesignerBrowserViewModel: ObservableObject {
         browsers = []
         insights = []
 
-        let group = DispatchGroup()
-        var scannedCaches: [DesignAppCacheInfo] = []
-        var scannedBrowsers: [BrowserInfo] = []
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let caches = await withCheckedContinuation { continuation in
+                DesignerBrowserScanner.scanDesignCaches { results in
+                    continuation.resume(returning: results)
+                }
+            }
 
-        group.enter()
-        DesignerBrowserScanner.scanDesignCaches { results in
-            scannedCaches = results
-            group.leave()
-        }
+            let b = await withCheckedContinuation { continuation in
+                DesignerBrowserScanner.scanBrowsers { results in
+                    continuation.resume(returning: results)
+                }
+            }
 
-        group.enter()
-        DesignerBrowserScanner.scanBrowsers { results in
-            scannedBrowsers = results
-            group.leave()
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            group.wait()
             let snapshot = PerformanceMonitor.capture(processLimit: 12)
             let diagnostics = DesignerBrowserScanner.generatePlainLanguageInsights(
-                designCaches: scannedCaches,
-                browsers: scannedBrowsers,
+                designCaches: caches,
+                browsers: b,
                 heaviestApps: snapshot.topProcesses
             )
 
-            DispatchQueue.main.async {
+            await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.designCaches = scannedCaches
-                self.browsers = scannedBrowsers
+                self.designCaches = caches
+                self.browsers = b
                 self.insights = diagnostics
-                if self.selectedBrowserID == nil, let first = scannedBrowsers.first {
+                if self.selectedBrowserID == nil, let first = b.first {
                     self.selectedBrowserID = first.id
                 }
                 self.isScanning = false
