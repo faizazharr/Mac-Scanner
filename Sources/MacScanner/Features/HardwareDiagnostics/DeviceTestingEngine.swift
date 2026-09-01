@@ -483,7 +483,7 @@ final class DeviceTestingEngine: ObservableObject {
     // MARK: - 3. Screen Dead Pixel In-App Tester
 
     @Published var isScreenTestActive: Bool = false
-    private var fullscreenWindow: NSWindow?
+    private var fullscreenWindow: DeadPixelWindow?
     private var keyEventMonitor: Any?
 
     func launchDeadPixelTester() {
@@ -500,7 +500,10 @@ final class DeviceTestingEngine: ObservableObject {
     private func presentFullscreenWindow() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
 
-        let window = NSWindow(
+        // Close any existing window first to avoid leaks
+        closeFullscreenWindow()
+
+        let window = DeadPixelWindow(
             contentRect: screen.frame,
             styleMask: [.borderless],
             backing: .buffered,
@@ -511,12 +514,17 @@ final class DeviceTestingEngine: ObservableObject {
         window.isOpaque = true
         window.hasShadow = false
         window.backgroundColor = .black
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        window.engine = self
         window.contentView = NSHostingView(rootView: DeadPixelFullscreenView(engine: self))
+
+        NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(window.contentView)
 
         self.fullscreenWindow = window
 
+        // Extra layer of event monitoring for foolproof keyboard responsiveness
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, self.isScreenTestActive else { return event }
             if event.keyCode == 53 { // ESC
@@ -538,8 +546,11 @@ final class DeviceTestingEngine: ObservableObject {
             NSEvent.removeMonitor(monitor)
             keyEventMonitor = nil
         }
-        fullscreenWindow?.close()
-        fullscreenWindow = nil
+        if let win = fullscreenWindow {
+            win.orderOut(nil)
+            win.close()
+            fullscreenWindow = nil
+        }
     }
 
     func nextDeadPixelColor() {
@@ -825,6 +836,31 @@ struct DeadPixelFullscreenView: View {
                     showHUD = false
                 }
             }
+        }
+    }
+}
+
+/// Borderless fullscreen window that guarantees key-window status and immediate ESC dismissal.
+final class DeadPixelWindow: NSWindow {
+    weak var engine: DeviceTestingEngine?
+
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+
+    override func cancelOperation(_ sender: Any?) {
+        // Native macOS ESC handler at AppKit window hierarchy
+        engine?.exitDeadPixelTester()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // ESC
+            engine?.exitDeadPixelTester()
+        } else if event.keyCode == 49 || event.keyCode == 36 || event.keyCode == 124 { // Space, Enter, Right Arrow
+            engine?.nextDeadPixelColor()
+        } else if event.keyCode == 123 { // Left Arrow
+            engine?.previousDeadPixelColor()
+        } else {
+            super.keyDown(with: event)
         }
     }
 }
