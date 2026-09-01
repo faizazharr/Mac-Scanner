@@ -14,41 +14,32 @@ struct DeviceTestingView: View {
     @State private var lastTrackpadAction = "Click / Force Touch here to test"
 
     var body: some View {
-        ZStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                header
 
-                    // Top Grid: Screen & Speaker
-                    HStack(alignment: .top, spacing: 16) {
-                        screenTestCard
-                        speakerTestCard
-                    }
-
-                    // Middle Grid: Microphone & Trackpad
-                    HStack(alignment: .top, spacing: 16) {
-                        micTestCard
-                        trackpadTestCard
-                    }
-
-                    // Keyboard Matrix Test
-                    keyboardTestCard
-
-                    // Battery Diagnostics
-                    if let device = deviceVM.device, device.batteryCycleCount != nil || device.batteryMaxCapacityPercent != nil {
-                        batteryCard(device)
-                    }
+                // Top Grid: Screen & Speaker
+                HStack(alignment: .top, spacing: 16) {
+                    screenTestCard
+                    speakerTestCard
                 }
-                .padding(20)
-            }
 
-            if engine.isScreenTestActive {
-                DeadPixelFullscreenView(engine: engine)
-                    .transition(.opacity)
-                    .zIndex(999)
+                // Middle Grid: Microphone & Trackpad
+                HStack(alignment: .top, spacing: 16) {
+                    micTestCard
+                    trackpadTestCard
+                }
+
+                // Keyboard Matrix Test
+                keyboardTestCard
+
+                // Battery Diagnostics
+                if let device = deviceVM.device, device.batteryCycleCount != nil || device.batteryMaxCapacityPercent != nil {
+                    batteryCard(device)
+                }
             }
+            .padding(20)
         }
-        .animation(.easeInOut(duration: 0.2), value: engine.isScreenTestActive)
         .onDisappear {
             engine.stopAudio()
             engine.stopMicSampling()

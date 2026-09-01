@@ -483,14 +483,63 @@ final class DeviceTestingEngine: ObservableObject {
     // MARK: - 3. Screen Dead Pixel In-App Tester
 
     @Published var isScreenTestActive: Bool = false
+    private var fullscreenWindow: NSWindow?
+    private var keyEventMonitor: Any?
 
     func launchDeadPixelTester() {
         currentColorIndex = 0
         isScreenTestActive = true
+        presentFullscreenWindow()
     }
 
     func exitDeadPixelTester() {
         isScreenTestActive = false
+        closeFullscreenWindow()
+    }
+
+    private func presentFullscreenWindow() {
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+
+        let window = NSWindow(
+            contentRect: screen.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false,
+            screen: screen
+        )
+        window.level = .screenSaver
+        window.isOpaque = true
+        window.hasShadow = false
+        window.backgroundColor = .black
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.contentView = NSHostingView(rootView: DeadPixelFullscreenView(engine: self))
+        window.makeKeyAndOrderFront(nil)
+
+        self.fullscreenWindow = window
+
+        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self, self.isScreenTestActive else { return event }
+            if event.keyCode == 53 { // ESC
+                self.exitDeadPixelTester()
+                return nil
+            } else if event.keyCode == 49 || event.keyCode == 36 || event.keyCode == 124 { // Space, Enter, Right Arrow
+                self.nextDeadPixelColor()
+                return nil
+            } else if event.keyCode == 123 { // Left Arrow
+                self.previousDeadPixelColor()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func closeFullscreenWindow() {
+        if let monitor = keyEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyEventMonitor = nil
+        }
+        fullscreenWindow?.close()
+        fullscreenWindow = nil
     }
 
     func nextDeadPixelColor() {
