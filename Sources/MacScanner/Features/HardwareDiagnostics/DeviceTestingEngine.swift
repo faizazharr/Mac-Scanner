@@ -1166,19 +1166,18 @@ struct ScreenTestCanvasView: View {
             GeometryReader { geo in
                 Canvas { context, size in
                     let step: CGFloat = 16
+                    var path = Path()
                     for x in stride(from: 0, to: size.width, by: step) {
-                        var path = Path()
                         path.move(to: CGPoint(x: x, y: 0))
                         path.addLine(to: CGPoint(x: x, y: size.height))
-                        context.stroke(path, with: .color(Color.white.opacity(0.35)), lineWidth: 1)
                     }
                     for y in stride(from: 0, to: size.height, by: step) {
-                        var path = Path()
                         path.move(to: CGPoint(x: 0, y: y))
                         path.addLine(to: CGPoint(x: size.width, y: y))
-                        context.stroke(path, with: .color(Color.white.opacity(0.35)), lineWidth: 1)
                     }
+                    context.stroke(path, with: .color(Color.white.opacity(0.35)), lineWidth: 1)
                 }
+                .drawingGroup()
                 .background(Color.black)
             }
         } else if id == "sharp_convergence" {
@@ -1194,16 +1193,15 @@ struct ScreenTestCanvasView: View {
                             CGPoint(x: 100, y: size.height - 100),
                             CGPoint(x: size.width - 100, y: size.height - 100)
                         ]
+                        var path = Path()
                         for c in centers {
                             for r in stride(from: 10, through: 70, by: 15) {
-                                context.stroke(
-                                    Path(ellipseIn: CGRect(x: c.x - CGFloat(r), y: c.y - CGFloat(r), width: CGFloat(r * 2), height: CGFloat(r * 2))),
-                                    with: .color(.white),
-                                    lineWidth: 1
-                                )
+                                path.addEllipse(in: CGRect(x: c.x - CGFloat(r), y: c.y - CGFloat(r), width: CGFloat(r * 2), height: CGFloat(r * 2)))
                             }
                         }
+                        context.stroke(path, with: .color(.white), lineWidth: 1)
                     }
+                    .drawingGroup()
                 }
             }
         } else {
@@ -1334,6 +1332,7 @@ struct ScreenTestCanvasView: View {
                 }
             }
         }
+        .drawingGroup()
     }
 }
 
