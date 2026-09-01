@@ -79,43 +79,54 @@ struct DeviceTestingView: View {
         }
     }
 
-    // MARK: - 1. Screen & Dead Pixel Test
+    // MARK: - 1. EIZO-Grade Display & Monitor Suite
 
     private var screenTestCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("1. Screen & Dead Pixel Test", systemImage: "display")
+                Label("1. EIZO Monitor & Display Diagnostics", systemImage: "display")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
-                Pill(text: "8 Test Colors", color: .purple)
+                Pill(text: "7 Test Suites", color: .purple)
             }
 
-            Text("Detect dead sub-pixels, stuck pixels, backlight bleeding, and panel color uniformity across full screen.")
+            Text("Comprehensive display diagnostics inspired by EIZO: Defective Pixels, Luminance Uniformity, 10-bit Gradients, Dynamic Range, Sharpness & Typography, Gamma 2.2, and 120Hz Motion Response.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            // Color Swatches Preview
-            HStack(spacing: 6) {
-                ForEach(DeviceTestingEngine.screenColors) { c in
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color(nsColor: c.color))
-                        .frame(height: 24)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                        )
+            // Category Chips Preview
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(ScreenTestCategory.allCases) { cat in
+                        Button {
+                            engine.launchDeadPixelTester(category: cat)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: cat.icon)
+                                    .font(.system(size: 10))
+                                Text(cat.rawValue)
+                                    .font(.caption2)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.purple.opacity(0.12))
+                            .foregroundStyle(.purple)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
 
             Spacer(minLength: 0)
 
             Button {
-                engine.launchDeadPixelTester()
+                engine.launchDeadPixelTester(category: .defectivePixels)
             } label: {
                 HStack {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    Text("Launch Fullscreen Screen Test")
+                    Text("Launch Fullscreen Monitor Suite")
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)

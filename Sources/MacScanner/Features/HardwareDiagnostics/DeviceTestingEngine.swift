@@ -480,14 +480,34 @@ final class DeviceTestingEngine: ObservableObject {
         micAudioLevel = 0.0
     }
 
-    // MARK: - 3. Screen Dead Pixel In-App Tester
+    // MARK: - 3. EIZO-Grade Screen Diagnostics Suite
 
     @Published var isScreenTestActive: Bool = false
+    @Published var selectedScreenCategory: ScreenTestCategory = .defectivePixels
+    @Published var currentPatternIndex: Int = 0
+    @Published var isHUDVisible: Bool = true
+    @Published var motionSpeed: Double = 480.0 // pixels per second
+
     private var fullscreenWindow: DeadPixelWindow?
     private var keyEventMonitor: Any?
 
-    func launchDeadPixelTester() {
-        currentColorIndex = 0
+    var currentCategoryPatterns: [ScreenTestItem] {
+        ScreenTestCatalog.patterns(for: selectedScreenCategory)
+    }
+
+    var currentPattern: ScreenTestItem {
+        let patterns = currentCategoryPatterns
+        guard !patterns.isEmpty else {
+            return ScreenTestCatalog.allPatterns[0]
+        }
+        let safeIndex = max(0, min(currentPatternIndex, patterns.count - 1))
+        return patterns[safeIndex]
+    }
+
+    func launchDeadPixelTester(category: ScreenTestCategory = .defectivePixels) {
+        selectedScreenCategory = category
+        currentPatternIndex = 0
+        isHUDVisible = true
         isScreenTestActive = true
         presentFullscreenWindow()
     }
@@ -497,10 +517,42 @@ final class DeviceTestingEngine: ObservableObject {
         closeFullscreenWindow()
     }
 
+    func selectCategory(_ category: ScreenTestCategory) {
+        selectedScreenCategory = category
+        currentPatternIndex = 0
+        flashHUD()
+    }
+
+    func nextPattern() {
+        let count = currentCategoryPatterns.count
+        guard count > 0 else { return }
+        currentPatternIndex = (currentPatternIndex + 1) % count
+        flashHUD()
+    }
+
+    func previousPattern() {
+        let count = currentCategoryPatterns.count
+        guard count > 0 else { return }
+        currentPatternIndex = (currentPatternIndex - 1 + count) % count
+        flashHUD()
+    }
+
+    func toggleHUD() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isHUDVisible.toggle()
+        }
+    }
+
+    func flashHUD() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isHUDVisible = true
+        }
+    }
+
     private func presentFullscreenWindow() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
 
-        // Close any existing window first to avoid leaks
+        // Close any existing window first
         closeFullscreenWindow()
 
         let window = DeadPixelWindow(
@@ -527,17 +579,7 @@ final class DeviceTestingEngine: ObservableObject {
         // Extra layer of event monitoring for foolproof keyboard responsiveness
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, self.isScreenTestActive else { return event }
-            if event.keyCode == 53 { // ESC
-                self.exitDeadPixelTester()
-                return nil
-            } else if event.keyCode == 49 || event.keyCode == 36 || event.keyCode == 124 { // Space, Enter, Right Arrow
-                self.nextDeadPixelColor()
-                return nil
-            } else if event.keyCode == 123 { // Left Arrow
-                self.previousDeadPixelColor()
-                return nil
-            }
-            return event
+            return self.handleFullscreenKeyDown(event) ? nil : event
         }
     }
 
@@ -553,16 +595,44 @@ final class DeviceTestingEngine: ObservableObject {
         }
     }
 
-    func nextDeadPixelColor() {
-        currentColorIndex = (currentColorIndex + 1) % Self.screenColors.count
-    }
-
-    func previousDeadPixelColor() {
-        currentColorIndex = (currentColorIndex - 1 + Self.screenColors.count) % Self.screenColors.count
-    }
-
-    var currentScreenTestColor: TestColor {
-        Self.screenColors[currentColorIndex]
+    func handleFullscreenKeyDown(_ event: NSEvent) -> Bool {
+        switch event.keyCode {
+        case 53: // ESC
+            exitDeadPixelTester()
+            return true
+        case 49, 36, 124: // Space, Enter, Right Arrow
+            nextPattern()
+            return true
+        case 123: // Left Arrow
+            previousPattern()
+            return true
+        case 4: // 'H' Key
+            toggleHUD()
+            return true
+        case 18: // '1'
+            selectCategory(.defectivePixels)
+            return true
+        case 19: // '2'
+            selectCategory(.uniformity)
+            return true
+        case 20: // '3'
+            selectCategory(.gradients)
+            return true
+        case 21: // '4'
+            selectCategory(.colorDistances)
+            return true
+        case 23: // '5'
+            selectCategory(.sharpness)
+            return true
+        case 22: // '6'
+            selectCategory(.gamma)
+            return true
+        case 26: // '7'
+            selectCategory(.motion)
+            return true
+        default:
+            return false
+        }
     }
 
     // MARK: - 4. Direct First-Responder Keyboard Event Handlers
@@ -738,43 +808,112 @@ final class DeviceTestingEngine: ObservableObject {
     }
 }
 
-/// In-App Fullscreen Overlay view for Dead Pixel & Backlight Bleed inspection.
+/// Fullscreen EIZO-Grade Display & Monitor Diagnostics Suite View
 struct DeadPixelFullscreenView: View {
     @ObservedObject var engine: DeviceTestingEngine
-    @State private var showHUD: Bool = true
     @State private var hideHUDTimer: Timer?
 
     var body: some View {
-        let testColor = engine.currentScreenTestColor
-        let isLight = testColor.name == "Pure White" || testColor.name == "Cyan"
+        let pattern = engine.currentPattern
 
         ZStack {
-            Color(nsColor: testColor.color)
+            // Pattern Canvas Renderer
+            ScreenTestCanvasView(pattern: pattern, motionSpeed: engine.motionSpeed)
                 .ignoresSafeArea()
 
-            if showHUD {
-                VStack(spacing: 8) {
+            // Floating EIZO Navigation & Status HUD
+            if engine.isHUDVisible {
+                VStack(spacing: 12) {
+                    // Category Selection Pills
+                    HStack(spacing: 8) {
+                        ForEach(ScreenTestCategory.allCases) { cat in
+                            Button {
+                                engine.selectCategory(cat)
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: cat.icon)
+                                        .font(.caption2)
+                                    Text(cat.rawValue)
+                                        .font(.caption)
+                                        .fontWeight(engine.selectedScreenCategory == cat ? .bold : .medium)
+                                    Text("[\(cat.shortcutNumber)]")
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .opacity(0.7)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    engine.selectedScreenCategory == cat
+                                        ? Color.blue
+                                        : Color.black.opacity(0.65)
+                                )
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.white.opacity(engine.selectedScreenCategory == cat ? 0.8 : 0.2), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    // Pattern Info & Dismiss Toolbar
                     HStack(spacing: 12) {
-                        Text(testColor.name)
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundStyle(isLight ? .black : .white)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 8) {
+                                Text(pattern.name)
+                                    .font(.title3)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.white)
 
-                        Text("•")
-                            .foregroundStyle(isLight ? .black : .white)
+                                let items = engine.currentCategoryPatterns
+                                if items.count > 1 {
+                                    Text("(\(engine.currentPatternIndex + 1) / \(items.count))")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.white.opacity(0.8))
+                                }
+                            }
 
-                        Text(testColor.purpose)
-                            .font(.subheadline)
-                            .foregroundStyle(isLight ? .black.opacity(0.8) : .white.opacity(0.8))
+                            Text(pattern.purpose)
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.9))
+
+                            Text(pattern.instructions)
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
 
                         Spacer()
 
+                        // Previous / Next Buttons
+                        if engine.currentCategoryPatterns.count > 1 {
+                            Button {
+                                engine.previousPattern()
+                            } label: {
+                                Image(systemName: "chevron.left.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.white.opacity(0.8))
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                engine.nextPattern()
+                            } label: {
+                                Image(systemName: "chevron.right.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.white.opacity(0.8))
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        // Exit Fullscreen Button
                         Button {
                             engine.exitDeadPixelTester()
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "xmark.circle.fill")
-                                Text("Exit Fullscreen (ESC)")
+                                Text("Exit (ESC)")
                                     .fontWeight(.bold)
                             }
                             .padding(.horizontal, 14)
@@ -786,29 +925,34 @@ struct DeadPixelFullscreenView: View {
                         .buttonStyle(.plain)
                     }
 
+                    // Bottom Hotkey Reference
                     HStack {
-                        Text("Click screen / press [Space] to switch color • [← / →] previous/next • [ESC] exit")
-                            .font(.caption)
-                            .foregroundStyle(isLight ? .black.opacity(0.6) : .white.opacity(0.6))
+                        Text("Click / [Space / →] Next • [←] Prev • [1-7] Category • [H] Toggle HUD • [ESC] Exit")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.75))
                         Spacer()
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .padding(.vertical, 14)
                 .background(
-                    (isLight ? Color.white : Color.black)
-                        .opacity(0.75)
-                        .blur(radius: 10)
+                    Color.black
+                        .opacity(0.85)
+                        .blur(radius: 8)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 14))
-                .padding(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+                .padding(18)
                 .frame(maxHeight: .infinity, alignment: .top)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            engine.nextDeadPixelColor()
+            engine.nextPattern()
             flashHUD()
         }
         .onHover { isHovered in
@@ -823,17 +967,370 @@ struct DeadPixelFullscreenView: View {
 
     private func flashHUD() {
         withAnimation(.easeInOut(duration: 0.2)) {
-            showHUD = true
+            engine.isHUDVisible = true
         }
         scheduleHUDAutoHide()
     }
 
     private func scheduleHUDAutoHide() {
         hideHUDTimer?.invalidate()
-        hideHUDTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
+        hideHUDTimer = Timer.scheduledTimer(withTimeInterval: 4.5, repeats: false) { _ in
             DispatchQueue.main.async {
                 withAnimation(.easeInOut(duration: 0.5)) {
-                    showHUD = false
+                    engine.isHUDVisible = false
+                }
+            }
+        }
+    }
+}
+
+/// Canvas rendering individual EIZO test patterns
+struct ScreenTestCanvasView: View {
+    let pattern: ScreenTestItem
+    let motionSpeed: Double
+
+    var body: some View {
+        switch pattern.category {
+        case .defectivePixels:
+            solidColorView(for: pattern.id)
+
+        case .uniformity:
+            uniformityView(for: pattern.id)
+
+        case .gradients:
+            gradientView(for: pattern.id)
+
+        case .colorDistances:
+            colorDistancesView(for: pattern.id)
+
+        case .sharpness:
+            sharpnessView(for: pattern.id)
+
+        case .gamma:
+            gammaView(for: pattern.id)
+
+        case .motion:
+            motionResponseView()
+        }
+    }
+
+    // 1. Defective Pixels
+    @ViewBuilder
+    private func solidColorView(for id: String) -> some View {
+        switch id {
+        case "pixel_white": Color.white
+        case "pixel_black": Color.black
+        case "pixel_red": Color(red: 1, green: 0, blue: 0)
+        case "pixel_green": Color(red: 0, green: 1, blue: 0)
+        case "pixel_blue": Color(red: 0, green: 0, blue: 1)
+        case "pixel_cyan": Color(red: 0, green: 1, blue: 1)
+        case "pixel_magenta": Color(red: 1, green: 0, blue: 1)
+        case "pixel_yellow": Color(red: 1, green: 1, blue: 0)
+        case "pixel_gray50": Color(white: 0.5)
+        default: Color.white
+        }
+    }
+
+    // 2. Uniformity
+    @ViewBuilder
+    private func uniformityView(for id: String) -> some View {
+        switch id {
+        case "unif_100": Color(white: 1.0)
+        case "unif_75": Color(white: 0.75)
+        case "unif_50": Color(white: 0.50)
+        case "unif_25": Color(white: 0.25)
+        default: Color(white: 0.5)
+        }
+    }
+
+    // 3. Gradients
+    @ViewBuilder
+    private func gradientView(for id: String) -> some View {
+        switch id {
+        case "grad_gray_h":
+            LinearGradient(colors: [.black, .white], startPoint: .leading, endPoint: .trailing)
+
+        case "grad_gray_v":
+            LinearGradient(colors: [.black, .white], startPoint: .top, endPoint: .bottom)
+
+        case "grad_rgb_bars":
+            VStack(spacing: 0) {
+                LinearGradient(colors: [.black, .red], startPoint: .leading, endPoint: .trailing)
+                LinearGradient(colors: [.black, .green], startPoint: .leading, endPoint: .trailing)
+                LinearGradient(colors: [.black, .blue], startPoint: .leading, endPoint: .trailing)
+                LinearGradient(colors: [.black, .white], startPoint: .leading, endPoint: .trailing)
+            }
+
+        case "grad_spectrum":
+            LinearGradient(
+                colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+
+        default:
+            LinearGradient(colors: [.black, .white], startPoint: .leading, endPoint: .trailing)
+        }
+    }
+
+    // 4. Color Distances & Dynamic Range
+    @ViewBuilder
+    private func colorDistancesView(for id: String) -> some View {
+        if id == "dist_near_black" {
+            // 10 near-black tiles (0% to 10%) on black field
+            ZStack {
+                Color.black
+                VStack(spacing: 20) {
+                    Text("Near-Black Shadow Range Steps")
+                        .font(.headline)
+                        .foregroundStyle(.white.opacity(0.8))
+
+                    HStack(spacing: 12) {
+                        ForEach(0..<10) { step in
+                            let val = Double(step) * 0.01 + 0.01 // 1% to 10%
+                            VStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color(white: val))
+                                    .frame(width: 80, height: 80)
+                                Text("\(Int(val * 100))%")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(.white.opacity(0.7))
+                            }
+                        }
+                    }
+                }
+            }
+        } else if id == "dist_near_white" {
+            // 10 near-white tiles (90% to 100%) on white field
+            ZStack {
+                Color.white
+                VStack(spacing: 20) {
+                    Text("Near-White Highlight Steps")
+                        .font(.headline)
+                        .foregroundStyle(.black.opacity(0.8))
+
+                    HStack(spacing: 12) {
+                        ForEach(0..<10) { step in
+                            let val = 0.90 + Double(step) * 0.01 // 90% to 99%
+                            VStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color(white: val))
+                                    .frame(width: 80, height: 80)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.black.opacity(0.15), lineWidth: 1)
+                                    )
+                                Text("\(Int(val * 100))%")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(.black.opacity(0.7))
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Saturation Step Matrix
+            ZStack {
+                Color.black
+                VStack(spacing: 16) {
+                    Text("Saturation Distinguishability Matrix")
+                        .font(.headline)
+                        .foregroundStyle(.white.opacity(0.8))
+
+                    let colors: [Color] = [.red, .green, .blue, .cyan, .purple, .yellow]
+                    VStack(spacing: 10) {
+                        ForEach(colors.indices, id: \.self) { cIdx in
+                            HStack(spacing: 8) {
+                                ForEach([0.80, 0.88, 0.94, 1.0], id: \.self) { sat in
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(colors[cIdx].opacity(sat))
+                                        .frame(width: 100, height: 42)
+                                        .overlay(
+                                            Text("\(Int(sat * 100))%")
+                                                .font(.caption2.bold())
+                                                .foregroundStyle(.white)
+                                        )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. Sharpness & Lines
+    @ViewBuilder
+    private func sharpnessView(for id: String) -> some View {
+        if id == "sharp_1px_grid" {
+            GeometryReader { geo in
+                Canvas { context, size in
+                    let step: CGFloat = 16
+                    for x in stride(from: 0, to: size.width, by: step) {
+                        var path = Path()
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: size.height))
+                        context.stroke(path, with: .color(Color.white.opacity(0.35)), lineWidth: 1)
+                    }
+                    for y in stride(from: 0, to: size.height, by: step) {
+                        var path = Path()
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: size.width, y: y))
+                        context.stroke(path, with: .color(Color.white.opacity(0.35)), lineWidth: 1)
+                    }
+                }
+                .background(Color.black)
+            }
+        } else if id == "sharp_convergence" {
+            GeometryReader { geo in
+                ZStack {
+                    Color.black
+                    // Center and 4-corner convergence crosshairs
+                    Canvas { context, size in
+                        let centers = [
+                            CGPoint(x: size.width / 2, y: size.height / 2),
+                            CGPoint(x: 100, y: 100),
+                            CGPoint(x: size.width - 100, y: 100),
+                            CGPoint(x: 100, y: size.height - 100),
+                            CGPoint(x: size.width - 100, y: size.height - 100)
+                        ]
+                        for c in centers {
+                            for r in stride(from: 10, through: 70, by: 15) {
+                                context.stroke(
+                                    Path(ellipseIn: CGRect(x: c.x - CGFloat(r), y: c.y - CGFloat(r), width: CGFloat(r * 2), height: CGFloat(r * 2))),
+                                    with: .color(.white),
+                                    lineWidth: 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Multi-scale typography
+            ZStack {
+                Color.white
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("MacScanner Display Typography & Subpixel Antialiasing Scale:")
+                        .font(.headline)
+                        .foregroundStyle(.black)
+
+                    Divider()
+
+                    ForEach([8, 10, 12, 14, 18, 24, 28], id: \.self) { pts in
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text("\(pts)pt:")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 45, alignment: .leading)
+                            Text("The quick brown fox jumps over the lazy dog • 1234567890 • QWERTYUIOPASDFGHJKLZXCVBNM")
+                                .font(.system(size: CGFloat(pts)))
+                                .foregroundStyle(.black)
+                        }
+                    }
+                }
+                .padding(40)
+            }
+        }
+    }
+
+    // 6. Gamma 2.2
+    @ViewBuilder
+    private func gammaView(for id: String) -> some View {
+        if id == "gamma_ramp" {
+            // 16-step luminance grayscale ramp
+            ZStack {
+                Color.black
+                VStack(spacing: 20) {
+                    Text("Gamma 2.2 16-Step Grayscale Ramp")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+
+                    HStack(spacing: 4) {
+                        ForEach(0..<16) { step in
+                            let norm = Double(step) / 15.0
+                            let lum = pow(norm, 2.2)
+                            VStack(spacing: 6) {
+                                Rectangle()
+                                    .fill(Color(white: lum))
+                                    .frame(maxWidth: .infinity, maxHeight: 240)
+                                Text(String(format: "%.2f", lum))
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundStyle(.white.opacity(0.7))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 40)
+                }
+            }
+        } else {
+            // Gamma 2.2 Checkerboard target
+            ZStack {
+                Color(white: 0.5)
+                VStack(spacing: 16) {
+                    Text("Gamma 2.2 Optical Blending Target")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+
+                    ZStack {
+                        Rectangle()
+                            .fill(Color(white: 0.5))
+                            .frame(width: 200, height: 200)
+
+                        Rectangle()
+                            .stroke(Color.white, lineWidth: 2)
+                            .frame(width: 200, height: 200)
+
+                        Text("2.2")
+                            .font(.system(size: 32, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.black.opacity(0.6))
+                    }
+                    Text("Step back 2-3 meters: the inner box should blend into the 50% neutral gray field.")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.8))
+                }
+            }
+        }
+    }
+
+    // 7. Motion Response & Ghosting (Smooth 60/120Hz Animation)
+    @ViewBuilder
+    private func motionResponseView() -> some View {
+        TimelineView(.animation) { timeline in
+            GeometryReader { geo in
+                let width = geo.size.width
+                let time = timeline.date.timeIntervalSinceReferenceDate
+                let period = max(1.0, width / motionSpeed)
+                let progress = (time.truncatingRemainder(dividingBy: period)) / period
+                let posX = progress * width
+
+                ZStack {
+                    Color.black
+
+                    // Background track guidelines
+                    VStack(spacing: 80) {
+                        Divider().background(Color.white.opacity(0.2))
+                        Divider().background(Color.white.opacity(0.2))
+                        Divider().background(Color.white.opacity(0.2))
+                    }
+
+                    // Track 1: High Contrast White Block (Testing Black -> White -> Black response)
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.white)
+                        .frame(width: 80, height: 50)
+                        .position(x: posX, y: geo.size.height * 0.35)
+
+                    // Track 2: Saturated Red Block (Testing Color Shift & Overdrive Trails)
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.red)
+                        .frame(width: 80, height: 50)
+                        .position(x: (posX + width * 0.3).truncatingRemainder(dividingBy: width), y: geo.size.height * 0.50)
+
+                    // Track 3: High Contrast Cyan Block
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.cyan)
+                        .frame(width: 80, height: 50)
+                        .position(x: (posX + width * 0.6).truncatingRemainder(dividingBy: width), y: geo.size.height * 0.65)
                 }
             }
         }
@@ -853,14 +1350,10 @@ final class DeadPixelWindow: NSWindow {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { // ESC
-            engine?.exitDeadPixelTester()
-        } else if event.keyCode == 49 || event.keyCode == 36 || event.keyCode == 124 { // Space, Enter, Right Arrow
-            engine?.nextDeadPixelColor()
-        } else if event.keyCode == 123 { // Left Arrow
-            engine?.previousDeadPixelColor()
-        } else {
-            super.keyDown(with: event)
+        if let eng = engine, eng.handleFullscreenKeyDown(event) {
+            return
         }
+        super.keyDown(with: event)
     }
 }
+

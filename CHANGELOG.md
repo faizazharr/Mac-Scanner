@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.0 — EIZO-Grade Display & Monitor Diagnostics Suite
+
+Comprehensive monitor testing suite inspired by EIZO (`test.eizo.be`) with 7 display calibration and diagnostic modules:
+
+### Features & Test Modules
+
+- **1. Defective Pixels**: Fullscreen solid primaries and secondaries (White, Black, Red, Green, Blue, Cyan, Magenta, Yellow, 50% Neutral Gray) to detect dead sub-pixels, stuck pixels, and backlight bleeding.
+- **2. Luminance Uniformity**: 25%, 50%, 75%, 100% full-field luminance tests to evaluate corner vignetting, hot spots, and panel clouding (mura effect).
+- **3. Color & Grayscale Gradients**: Smooth 10-bit continuous linear gradients (Horizontal & Vertical Grayscale, channel-separated RGB bars, full visible spectrum) to detect color banding and dithering artifacts.
+- **4. Color Distances & Dynamic Range**: Near-black (1%–10%) and near-white (90%–99%) stepped matrices to detect black crush and highlight clipping.
+- **5. Sharpness & Typography**: 1px micro line grid, concentric radial convergence crosshairs, and multi-scale Retina typography (8pt to 28pt) to evaluate scaling distortion and subpixel antialiasing.
+- **6. Gamma 2.2 Calibration**: Gamma 2.2 reference target with 16-level grayscale ramp and high-frequency optical blending checkerboard.
+- **7. Motion Response (120Hz ProMotion)**: High-framerate animated pursuit UFO test blocks (240px/s, 480px/s, 960px/s) to inspect pixel transition times, motion blur, and overdrive ghosting.
+- **Fullscreen HUD & Controls**: Floating category pills with hotkeys `[1-7]`, pattern step navigation with `[Space] / [← / →]`, HUD toggle with `[H]`, and foolproof `[ESC]` exit via custom AppKit `DeadPixelWindow`.
+
 ## v1.0.1 — English Localization & Self-Protection Safeguards
 
 Patch release providing 100% clean English localization across all features, enhanced Swift 6 concurrency compliance, and self-uninstallation protection.
