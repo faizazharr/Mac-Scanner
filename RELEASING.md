@@ -1,70 +1,71 @@
-# Panduan Rilis & Semantic Versioning (Release Guide) 🚀
+# Release Guide & Semantic Versioning 🚀
 
-Dokumen ini menjelaskan alur kerja rilis resmi untuk **MacScanner** menggunakan **Semantic Versioning (SemVer)** dan pipeline otomatisasi GitHub Actions.
+This document outlines the official release workflow for **MacScanner** using **Semantic Versioning (SemVer)** and automated GitHub Actions CI/CD.
 
 ---
 
-## 📌 1. Standar Semantic Versioning (SemVer)
+## 📌 1. Semantic Versioning Standards (SemVer)
 
-Setiap tag rilis wajib mengikuti format:
+All release tags must strictly follow the format:
 ```
 vMAJOR.MINOR.PATCH
 ```
 
-- **`MAJOR` (v1.0.0 → v2.0.0)**: Perubahan arsitektural besar atau pembaruan sistem yang memecah kompatibilitas sebelumnya.
-- **`MINOR` (v1.0.0 → v1.1.0)**: Penambahan fitur baru yang kompatibel (misal: penambahan modul hardware test baru, tab screening baru).
-- **`PATCH` (v1.0.0 → v1.0.1)**: Perbaikan bug, optimasi performa ringan, atau pembaruan dokumentasi.
+- **`MAJOR` (v1.0.0 → v2.0.0)**: Substantial architectural overhauls or breaking changes.
+- **`MINOR` (v1.0.0 → v1.1.0)**: New backwards-compatible features (e.g. new diagnostic modules, new screening insights).
+- **`PATCH` (v1.0.0 → v1.0.1)**: Bug fixes, lightweight optimizations, or documentation improvements.
 
 ---
 
-## 🚀 2. Langkah-Langkah Membuat Rilis Otomatis (GitHub Actions)
+## 🚀 2. Steps to Publish an Automated Release (GitHub Actions)
 
-Core codebase selalu berada di branch `master`. Untuk memicu build dan rilis otomatis:
+The core codebase always resides on the `master` branch. To trigger an automated release build:
 
-### Langkah 1: Pastikan Semua Perubahan Sudah Masuk ke `master`
+### Step 1: Ensure Your Master Branch is Up to Date
 ```bash
 git checkout master
 git pull origin master
 ```
 
-### Langkah 2: Buat Semantic Version Tag
-Buat tag Git beranotasi dengan pesan rilis yang jelas:
+### Step 2: Create an Annotated Semantic Version Tag
+Create an annotated Git tag with a descriptive release message:
 ```bash
-# Contoh rilis versi 1.0.0
-git tag -a v1.0.0 -m "Release v1.0.0: Initial stable release with full screening & uninstaller"
+# Example release for v1.0.0
+git tag -a v1.0.0 -m "Release v1.0.0: Official release with full screening & uninstaller"
 ```
 
-### Langkah 3: Push Tag ke GitHub
+### Step 3: Push the Tag to GitHub
 ```bash
 git push origin v1.0.0
 ```
 
-### Langkah 4: Otomatisasi GitHub Actions Bekerja
-Setelah tag di-push:
-1. Workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) akan otomatis terpicu.
-2. Runner macOS akan mengompilasi binary dengan optimasi `-Osize` dan mengemas installer `MacScanner.dmg` dengan kompresi maksimal `zlib-9`.
-3. GitHub Release baru akan diterbitkan secara otomatis dengan melampirkan file `MacScanner.dmg` dan catatan perubahan (*release notes*).
+### Step 4: Automated GitHub Actions Pipeline
+Once the tag is pushed:
+1. The [`.github/workflows/release.yml`](.github/workflows/release.yml) workflow is automatically triggered.
+2. The macOS runner compiles the binary with `-Osize` whole-module optimization and packages `MacScanner.dmg` with maximum `zlib-9` compression.
+3. A GitHub Release is created automatically with `MacScanner.dmg` attached and auto-generated release notes.
 
 ---
 
-## 🛠️ 3. Pembuatan Rilis Manual / Lokal (Offline Build)
+## 🛠️ 3. Local / Manual Offline Release Build
 
-Jika Anda ingin membuat file installer `.dmg` secara lokal tanpa melalui GitHub Actions:
+To build the release `.dmg` installer locally without GitHub Actions:
 
 ```bash
-# 1. Bersihkan build cache lama
+# 1. Clean previous build artifacts
 rm -rf build .build
 
-# 2. Eksekusi script release packaging
+# 2. Run the release packaging script
 ./Scripts/build_dmg.sh release
 
-# 3. Hasil DMG installer berada di:
+# 3. Locate the generated DMG installer:
 open build/MacScanner.dmg
 ```
 
 ---
 
-## 🔒 4. Jaminan Integritas Rilis
+## 🔒 4. Release Quality & Integrity
 
-- **100% Zero-Telemetry**: Setiap binary rilis terverifikasi bebas dari pelacak analitik eksternal.
-- **Ukuran Ringkas**: Ukuran binary rilis terkompresi terjaga di kisaran **~1.7 MB** dan DMG **~2.7 MB**.
+- **100% Zero-Telemetry**: Every release binary is verified to be completely free of external tracking SDKs and remote network requests.
+- **Ultra-Compact Footprint**: The release executable is optimized to **~1.7 MB** and the compressed DMG installer to **~2.7 MB**.
+

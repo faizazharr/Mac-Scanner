@@ -1,20 +1,14 @@
 # MacScanner ⚡
 
-**MacScanner** is an ultra-fast, lightweight (1.7 MB binary), and privacy-first macOS utility designed to monitor disk health, clean application leftovers, analyze performance, and test hardware diagnostics — all in one native app with 0% background overhead.
+**MacScanner** is an ultra-fast, lightweight (1.7 MB binary), and privacy-first macOS utility designed to monitor disk health, clean application leftovers, analyze system performance, and run hardware diagnostics — all in one native app with 0% background overhead.
 
 ---
 
-## 🔒 Jaminan Privasi & Disclaimer Pengembang (Privacy & Zero-Data Collection Guarantee)
+## 🔒 Privacy & Zero-Data Collection Guarantee
 
 > [!IMPORTANT]
-> ### 🛡️ Pernyataan Privasi Mutlak Pengembang (Official Privacy Mandate):
+> ### 🛡️ Official Developer Privacy Mandate:
 >
-> 🇮🇩 **Bahasa Indonesia:**
-> **Pengembang TIDAK MENGAMBIL, MEREKAM, MEMINDAHKAN, MAUPUN MENYIMPAN INFORMASI PRIVASI APAPUN** dari pengguna yang menginstal aplikasi ini, maupun dari teman-teman yang ingin berkontribusi pada proyek ini (*open-source contributors*).
-> - **100% Eksekusi Lokal (*On-Device*)**: Seluruh pemindaian direktori, file sisa, telemetri prosesor/RAM/baterai, dan pemeriksaan hardware berjalan murni di dalam memori Mac Anda sendiri.
-> - **Zero Telemetry & Tanpa Server/Cloud**: MacScanner tidak memiliki server eksternal, tidak menggunakan SDK pelacak/analitik pihak ketiga, dan tidak pernah melakukan koneksi internet untuk mengirim data apapun. Data Anda adalah milik Anda sepenuhnya.
->
-> 🇬🇧 **English:**
 > **The developer DOES NOT COLLECT, HARVEST, TRACK, TRANSMIT, OR STORE ANY PRIVATE INFORMATION OR TELEMETRY** from users who install this application, nor from community members contributing to this project.
 > - **100% On-Device Local Processing**: All disk analysis, leftover scans, memory/CPU/battery metrics, and hardware tests run strictly in local memory on your Mac.
 > - **Zero Telemetry & No Remote Servers**: MacScanner does not connect to any cloud backend, contains zero tracking SDKs, and never phones home. What happens on your Mac stays on your Mac.
@@ -26,16 +20,17 @@
 ### 🏠 1. System Overview & Hardware Specs
 - Instant hardware detection: **Apple Silicon Chip (M-Series)**, CPU/GPU Cores, Unified Memory, and macOS Build.
 - **Hardware Peripherals Check**: Real-time status for **Wi-Fi 6E/6 Card Interface**, **Bluetooth Controller**, and **Built-in Speaker System**.
-- **Battery Health**: Capacity percentage, cycle count, and battery condition (Normal/Service).
+- **Battery Health**: Maximum capacity percentage, cycle count, and condition (Normal/Service).
 
 ### 🗑️ 2. Deep Root App Uninstaller
 - Scans installed `.app` bundles and uncovers **all hidden root leftovers** across `~/Library/Application Support`, `Caches`, `Containers`, `Group Containers`, `Logs`, and `LaunchAgents`.
 - **Automatic Instant Sizing**: Pre-calculates accurate disk space for all installed applications concurrently.
 - **Safe Trash Migration**: Uses native macOS Trash (`FileManager.trashItem`) so deletions remain 100% reversible.
+- **Self-Uninstall Protection**: Built-in safeguards prevent accidental deletion of MacScanner itself.
 
 ### ⏱️ 3. Mac & App Screen Time Screening
 - Uptime tracking, estimated active daily screen hours, and battery cycle health.
-- **Interactive Statistics Charts**: Compare screen duration, battery impact percentage, and disk footprint using Apple Swift Charts with customizable filters (`[ Jam Layar | Dampak Baterai | Ukuran Disk ]`).
+- **Interactive Statistics Charts**: Compare screen duration, battery impact percentage, and disk footprint using Apple Swift Charts with customizable filters (`[ Screen Time | Battery Impact | Disk Size ]`).
 
 ### ⚡ 4. Live System Performance & Root-Cause Inspector
 - Real-time Mach-kernel telemetry for **Memory, CPU, GPU, Swap, and Thermal State** with 0% idle CPU footprint.
@@ -70,7 +65,7 @@ We welcome open-source contributions! To ensure MacScanner remains lightweight, 
 1. **Strict Zero-Telemetry Policy**:
    - PRs must **NEVER** introduce external tracking, third-party analytics SDKs, or network telemetry requests.
 2. **SOLID & Single-Event Driven (UDF) Architecture**:
-   - Separate concerns across protocols in [`Sources/MacScanner/ServiceProtocols.swift`](Sources/MacScanner/ServiceProtocols.swift).
+   - Separate concerns across protocols in [`Sources/MacScanner/Core/Protocols/ServiceProtocols.swift`](Sources/MacScanner/Core/Protocols/ServiceProtocols.swift).
    - All state mutations must flow through unidirectional action dispatches (`send(_ action:)`).
    - Use dependency injection (`init(service: ...)`) for all ViewModels.
 3. **Zero-Bloat & Ultra-Lightweight Footprint**:
@@ -93,6 +88,6 @@ For instructions on publishing releases via Git tags, see [**`RELEASING.md`**](R
 
 ---
 
-## 📄 License
+## 📄 Copyright
 
-Copyright © 2026 **Faiz Azhar Ristya Nugraha**. Released under the [MIT License](LICENSE).
+Copyright © 2026 **Faiz Azhar Ristya Nugraha**. All rights reserved.

@@ -39,14 +39,14 @@ MacScanner must remain invisible in system resource usage (CPU idle < 0.1%, RAM 
    - Heavy I/O, directory traversals, or hardware samplers must run on `Task.detached(priority: .utility)` and update state back onto `@MainActor`.
 ---
 
-## 🔒 3. Perjanjian Privasi Pengembang & Kontributor (Privacy Pact for Contributors)
+## 🔒 3. Developer & Contributor Privacy Agreement
 
-Pengembang dan seluruh rekan-rekan yang berkontribusi (*contributors*) pada proyek MacScanner **wajib menyepakati dan mematuhi komitmen privasi mutlak berikut**:
+The maintainer and all community members contributing to **MacScanner** **must strictly agree to and comply with the following privacy mandate**:
 
-> 🛡️ **Komitmen Bersama:**
-> 1. **Tidak Mengambil Informasi Pengguna**: Dilarang keras menulis atau menyisipkan kode yang mengumpulkan, mencatat, atau mentransmisikan data privasi pengguna, direktori file, identitas hardware, atau riwayat penggunaan ke luar perangkat Mac pengguna.
-> 2. **Zero-Telemetry & Tanpa Tracking**: Tidak boleh menambahkan library/SDK analitik eksternal, webhooks, tracking pixels, atau panggilan jaringan jarak jauh (*remote calls*).
-> 3. **100% Lokal & Open-Source**: Seluruh pemrosesan fitur baru harus berjalan murni *in-memory* di perangkat lokal pengguna dan dapat diaudit secara transparan di GitHub.
+> 🛡️ **Shared Privacy Commitment:**
+> 1. **Zero User Data Harvesting**: Contributors must NEVER write or introduce code that collects, logs, analyzes, or transmits private user information, file lists, hardware serial numbers, or activity telemetry outside the user's Mac.
+> 2. **Zero Telemetry & No Tracking**: Do not add third-party analytics SDKs, webhooks, tracking pixels, or remote network endpoints.
+> 3. **100% Local & Auditable**: All new features must execute purely *in-memory* on the local Mac and remain 100% open and auditable on GitHub.
 
 ---
 
