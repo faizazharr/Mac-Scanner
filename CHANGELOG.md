@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.1 — English Localization & Self-Protection Safeguards
+
+Patch release providing 100% clean English localization across all features, enhanced Swift 6 concurrency compliance, and self-uninstallation protection.
+
+### Improvements & Fixes
+
+- **100% English Localization**: Complete localization sweep across all diagnostic modules, tooltips, toasts, confirmation dialogs, and hardware testing interfaces.
+- **Uninstaller Self-Protection**: Added bundle identity safeguard to prevent MacScanner from accidentally targeting or uninstalling its own active bundle and assets.
+- **Swift 6 Concurrency Compliance**: Refactored timer callbacks and background dispatch closures to satisfy strict actor-isolation guarantees.
+- **Enhanced Hardware Diagnostics**: Fully translated keyboard matrix key detection, shortcut interception, stereo audio sweeps, and dead pixel inspection HUD.
+
 ## v1.0.0 — First public release
 
 Native macOS disk-usage screener: see where your disk space actually goes,
