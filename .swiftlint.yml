@@ -1,0 +1,59 @@
+# SwiftLint Configuration for MacScanner
+# Enforces code safety, Swift 6 concurrency cleanliness, and clean formatting.
+
+disabled_rules:
+  - todo
+  - trailing_comma
+  - type_body_length
+  - file_length
+
+opt_in_rules:
+  - force_unwrapping
+  - explicitly_garbage_collected
+  - fatal_error_message
+  - first_where
+  - empty_count
+  - modifier_order
+  - redundant_nil_coalescing
+  - unneeded_break_in_switch
+  - vertical_parameter_alignment_on_call
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - legacy_multiple
+
+included:
+  - Sources
+
+excluded:
+  - .build
+  - build
+  - .swiftpm
+
+line_length:
+  warning: 180
+  error: 240
+  ignores_urls: true
+  ignores_comments: true
+
+type_name:
+  min_length: 3
+  max_length: 45
+
+identifier_name:
+  min_length: 1
+  max_length: 50
+  excluded:
+    - id
+    - vm
+    - to
+    - fm
+    - up
+    - L
+    - R
+
+custom_rules:
+  no_direct_rm_rf:
+    name: "Non-Destructive Deletion"
+    regex: 'removeItem\(at'
+    message: "Use FileManager.default.trashItem instead of permanent removeItem to ensure safety."
+    severity: warning

@@ -101,6 +101,30 @@ struct DeviceInfoCard: View {
                     icon: "shield.lefthalf.filled",
                     color: .indigo
                 )
+
+                specTile(
+                    title: "Wi-Fi Card Interface",
+                    value: device.wifiCardModel,
+                    subtitle: device.wifiStatus,
+                    icon: "wifi",
+                    color: device.wifiIsInstalled ? .blue : .red
+                )
+
+                specTile(
+                    title: "Bluetooth Controller",
+                    value: device.bluetoothChipset,
+                    subtitle: device.bluetoothStatus,
+                    icon: "wave.3.forward.circle.fill",
+                    color: device.bluetoothIsInstalled ? .indigo : .red
+                )
+
+                specTile(
+                    title: "Built-in Speaker System",
+                    value: device.speakerModel,
+                    subtitle: device.speakerStatus,
+                    icon: "speaker.wave.3.fill",
+                    color: device.speakerIsInstalled ? .teal : .red
+                )
             }
         }
         .padding(16)

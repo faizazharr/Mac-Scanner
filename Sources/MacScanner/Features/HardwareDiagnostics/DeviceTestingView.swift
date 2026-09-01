@@ -14,32 +14,41 @@ struct DeviceTestingView: View {
     @State private var lastTrackpadAction = "Click / Force Touch here to test"
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                header
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    header
 
-                // Top Grid: Screen & Speaker
-                HStack(alignment: .top, spacing: 16) {
-                    screenTestCard
-                    speakerTestCard
+                    // Top Grid: Screen & Speaker
+                    HStack(alignment: .top, spacing: 16) {
+                        screenTestCard
+                        speakerTestCard
+                    }
+
+                    // Middle Grid: Microphone & Trackpad
+                    HStack(alignment: .top, spacing: 16) {
+                        micTestCard
+                        trackpadTestCard
+                    }
+
+                    // Keyboard Matrix Test
+                    keyboardTestCard
+
+                    // Battery Diagnostics
+                    if let device = deviceVM.device, device.batteryCycleCount != nil || device.batteryMaxCapacityPercent != nil {
+                        batteryCard(device)
+                    }
                 }
-
-                // Middle Grid: Microphone & Trackpad
-                HStack(alignment: .top, spacing: 16) {
-                    micTestCard
-                    trackpadTestCard
-                }
-
-                // Keyboard Matrix Test
-                keyboardTestCard
-
-                // Battery Diagnostics
-                if let device = deviceVM.device, device.batteryCycleCount != nil || device.batteryMaxCapacityPercent != nil {
-                    batteryCard(device)
-                }
+                .padding(20)
             }
-            .padding(20)
+
+            if engine.isScreenTestActive {
+                DeadPixelFullscreenView(engine: engine)
+                    .transition(.opacity)
+                    .zIndex(999)
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: engine.isScreenTestActive)
         .onDisappear {
             engine.stopAudio()
             engine.stopMicSampling()
@@ -326,25 +335,15 @@ struct DeviceTestingView: View {
 
     private var keyboardTestCard: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // Invisible native keyboard responder
+            KeyboardResponderRepresentable(engine: engine)
+                .frame(width: 0, height: 0)
+
             HStack {
                 Label("5. Uji Matrix Tombol & Shortcut Keyboard Mac", systemImage: "keyboard.fill")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
-
-                Button {
-                    engine.isShortcutInterceptionActive.toggle()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: engine.isShortcutInterceptionActive ? "lock.shield.fill" : "lock.open")
-                        Text(engine.isShortcutInterceptionActive ? "Kunci Shortcut Sistem (Aktif)" : "Kunci Shortcut (Nonaktif)")
-                    }
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(engine.isShortcutInterceptionActive ? .teal : .secondary)
-                .controlSize(.small)
 
                 let percentage = Int(Double(engine.testedKeyCodes.count) / Double(DeviceTestingEngine.totalStandardKeyCount) * 100)
                 Pill(text: "\(engine.testedKeyCodes.count)/\(DeviceTestingEngine.totalStandardKeyCount) Keys (\(percentage)%)", color: percentage == 100 ? .green : .blue)

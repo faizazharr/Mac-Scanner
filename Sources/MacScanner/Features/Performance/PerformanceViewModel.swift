@@ -4,6 +4,13 @@
 import Foundation
 import SwiftUI
 
+struct DefaultPerformanceTelemetryService: PerformanceTelemetryProviderProtocol {
+    init() {}
+    func captureSnapshot() async -> PerformanceMonitor.Snapshot {
+        PerformanceMonitor.capture()
+    }
+}
+
 /// Drives the Performance tab: live system-load telemetry, sparkline history,
 /// process inspection, and app root-cause dissection.
 @MainActor
@@ -47,6 +54,7 @@ final class PerformanceViewModel: ObservableObject {
     /// Detailed anatomical root-cause breakdown of a selected/highlighted heavy app.
     @Published private(set) var inspectedApp: AppInspectionDetail?
 
+    private let service: any PerformanceTelemetryProviderProtocol
     private var timer: Timer?
     private var lastSignatures: [String: String] = [:]
     private var frozenAdviceByTitle: [String: String] = [:]
@@ -56,6 +64,10 @@ final class PerformanceViewModel: ObservableObject {
     private var lastApplyTime: Date?
     private var manuallySelectedAppName: String?
     private var activeViewerCount = 0
+
+    init(service: any PerformanceTelemetryProviderProtocol = DefaultPerformanceTelemetryService()) {
+        self.service = service
+    }
 
     /// Single entry point for every action the Performance view can raise.
     func send(_ action: Action) {
@@ -110,13 +122,11 @@ final class PerformanceViewModel: ObservableObject {
     // MARK: - Private
 
     private func refresh() {
-        let wantsMem = processSort == .memory
-        Task {
-            let snap = await Task.detached(priority: .utility) {
-                PerformanceMonitor.capture(includeMemorySortedProcesses: wantsMem)
-            }.value
-
-            self.apply(snapshot: snap)
+        Task.detached(priority: .utility) { [service] in
+            let snap = await service.captureSnapshot()
+            await MainActor.run { [weak self] in
+                self?.apply(snapshot: snap)
+            }
         }
     }
 

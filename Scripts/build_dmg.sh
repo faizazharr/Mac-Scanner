@@ -29,12 +29,13 @@ cp -R "$APP_PATH" "$STAGING_DIR/MacScanner.app"
 # Create drag-and-drop symlink to /Applications
 ln -s /Applications "$STAGING_DIR/Applications"
 
-echo "==> Packaging MacScanner.dmg..."
+echo "==> Packaging MacScanner.dmg (Max Compression zlib-9)..."
 hdiutil create \
     -volname "MacScanner" \
     -srcfolder "$STAGING_DIR" \
     -ov \
     -format UDZO \
+    -imagekey zlib-level=9 \
     "$DMG_PATH"
 
 # Code sign the DMG if an identity is available

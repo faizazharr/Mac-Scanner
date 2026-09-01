@@ -38,6 +38,7 @@ struct PerformanceView: View {
                     // Interactive Root-Cause Inspector (Anatomy Breakdown)
                     if let inspected = vm.inspectedApp {
                         rootCauseInspectorCard(inspected)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
                     // What's Making This Mac Heavy (Clickable to Inspect)
@@ -64,6 +65,7 @@ struct PerformanceView: View {
             }
             .padding(20)
         }
+        .animation(.easeInOut(duration: 0.25), value: vm.inspectedApp?.appName)
         .confirmationDialog(
             "Terminate \(pendingKillPID?.name ?? "Process")?",
             isPresented: Binding(
@@ -179,9 +181,9 @@ struct PerformanceView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(app.color.opacity(0.18))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                     Image(systemName: app.icon)
-                        .font(.title3)
+                        .font(.title3.bold())
                         .foregroundStyle(app.color)
                 }
 
@@ -190,7 +192,7 @@ struct PerformanceView: View {
                         Text("Root-Cause Deep Dive: \(app.appName)")
                             .font(.headline)
                             .fontWeight(.bold)
-                        Pill(text: "Inspecting Anatomy", color: app.color)
+                        Pill(text: "Sedang Diperiksa", color: app.color)
                     }
                     Text(app.rootCauseSummary)
                         .font(.caption)
@@ -199,16 +201,40 @@ struct PerformanceView: View {
 
                 Spacer()
 
-                if let main = app.mainProcess {
+                HStack(spacing: 8) {
+                    if let main = app.mainProcess {
+                        Button {
+                            pendingKillPID = (main.pid, app.appName)
+                        } label: {
+                            Label("Hentikan \(app.appName)", systemImage: "xmark.octagon.fill")
+                                .font(.caption.bold())
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                        .controlSize(.small)
+                    }
+
                     Button {
-                        pendingKillPID = (main.pid, app.appName)
+                        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
                     } label: {
-                        Label("Quit \(app.appName)", systemImage: "xmark.circle.fill")
+                        Label("Activity Monitor", systemImage: "waveform.path.ecg")
                             .font(.caption)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
+                    .buttonStyle(.bordered)
                     .controlSize(.small)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            vm.send(.inspectApp(""))
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Tutup inspeksi")
                 }
             }
 
@@ -524,44 +550,58 @@ struct PerformanceView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("What's Making This Mac Heavy (Click to Inspect)")
+                    Text("Aplikasi & Proses yang Membebani Mac (Klik untuk Detail & Aksi)")
                         .font(.headline)
                         .fontWeight(.bold)
-                    Text("Ranked by sustained CPU & memory impact over this session.")
+                    Text("Diurutkan berdasarkan akumulasi konsumsi CPU dan RAM selama sesi ini.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Pill(text: "\(apps.count) Apps Active", color: .orange)
+                Pill(text: "\(apps.count) Proses Aktif", color: .orange)
             }
 
             ForEach(apps) { app in
-                let isSelected = vm.inspectedApp?.appName.lowercased() == app.name.lowercased()
+                let info = AppInspector.friendlyInfo(for: app.name)
+                let isSelected = vm.inspectedApp?.appName.lowercased() == app.name.lowercased() ||
+                                 vm.inspectedApp?.appName.lowercased() == info.displayName.lowercased()
+
                 Button {
-                    vm.send(.inspectApp(app.name))
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        if isSelected {
+                            vm.send(.inspectApp(""))
+                        } else {
+                            vm.send(.inspectApp(app.name))
+                        }
+                    }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: appIcon(for: app.name))
-                            .font(.body)
-                            .foregroundStyle(app.avgCPUPercent >= 30 ? .orange : .blue)
-                            .frame(width: 24)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(info.color.opacity(0.18))
+                                .frame(width: 36, height: 36)
+                            Image(systemName: info.icon)
+                                .font(.body.bold())
+                                .foregroundStyle(info.color)
+                        }
 
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
-                                Text(app.name)
+                                Text(info.displayName)
                                     .font(.subheadline)
                                     .fontWeight(.bold)
                                     .foregroundStyle(.primary)
 
                                 if isSelected {
-                                    Pill(text: "Selected", color: .blue)
+                                    Pill(text: "Sedang Diperiksa", color: .blue)
                                 }
                             }
-                            Text("Observed across \(app.sampleCount) telemetry checks")
-                                .font(.system(size: 10))
+                            Text(info.description)
+                                .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
 
                         Spacer()
@@ -577,7 +617,7 @@ struct PerformanceView: View {
                                 .foregroundStyle(.tertiary)
                         }
 
-                        Image(systemName: "chevron.right")
+                        Image(systemName: isSelected ? "chevron.down" : "chevron.right")
                             .font(.caption2)
                             .foregroundStyle(isSelected ? Color.blue : Color.secondary.opacity(0.4))
                     }
@@ -587,23 +627,6 @@ struct PerformanceView: View {
                 .buttonStyle(.plain)
             }
         }
-    }
-
-    private func appIcon(for name: String) -> String {
-        let lower = name.lowercased()
-        if lower.contains("chrome") || lower.contains("safari") || lower.contains("arc") || lower.contains("firefox") {
-            return "globe"
-        }
-        if lower.contains("figma") || lower.contains("photoshop") || lower.contains("illustrator") || lower.contains("sketch") {
-            return "paintbrush.fill"
-        }
-        if lower.contains("xcode") || lower.contains("code") || lower.contains("terminal") {
-            return "chevron.left.forwardslash.chevron.right"
-        }
-        if lower.contains("slack") || lower.contains("discord") || lower.contains("zoom") || lower.contains("teams") {
-            return "bubble.left.and.bubble.right.fill"
-        }
-        return "app.fill"
     }
 
     // MARK: - Process List
@@ -633,58 +656,95 @@ struct PerformanceView: View {
                     ForEach(ProcessSort.allCases, id: \.self) { Text($0.rawValue) }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 130)
-                .labelsHidden()
+                .frame(width: 140)
             }
 
-            ForEach(processes.prefix(15)) { process in
-                HStack(alignment: .center, spacing: 10) {
-                    Image(systemName: process.isKnownHeavy ? "flame.fill" : "gearshape.2.fill")
-                        .font(.caption)
-                        .foregroundStyle(process.isKnownHeavy ? .orange : .secondary)
-                        .frame(width: 18)
+            ForEach(processes.prefix(20)) { process in
+                let info = AppInspector.friendlyInfo(for: process.name)
+                let isSelected = vm.inspectedApp?.appName.lowercased() == process.name.lowercased() ||
+                                 vm.inspectedApp?.appName.lowercased() == info.displayName.lowercased()
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(spacing: 6) {
-                            Text(process.name)
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .lineLimit(1)
-                            Text("PID: \(process.pid)")
-                                .font(.system(size: 9, design: .monospaced))
-                                .foregroundStyle(.tertiary)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        if isSelected {
+                            vm.send(.inspectApp(""))
+                        } else {
+                            vm.send(.inspectApp(process.name))
                         }
-                        if let parent = process.parentAppName {
-                            Text("Belongs to \(parent)")
-                                .font(.system(size: 9))
+                    }
+                } label: {
+                    HStack(alignment: .center, spacing: 10) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(info.color.opacity(0.15))
+                                .frame(width: 24, height: 24)
+                            Image(systemName: info.icon)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(info.color)
+                        }
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            HStack(spacing: 6) {
+                                Text(info.displayName)
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Text("PID: \(process.pid)")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            if let parent = process.parentAppName {
+                                Text("Belongs to \(parent)")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Spacer()
+
+                        // Highlight according to selected sort mode
+                        if processSort == .cpu {
+                            Text("\(process.cpuPercent, specifier: "%.1f")% CPU")
+                                .font(.system(.caption, design: .monospaced))
+                                .fontWeight(.bold)
+                                .foregroundStyle(process.cpuPercent >= 40 ? .red : (process.cpuPercent >= 15 ? .orange : .primary))
+                                .frame(width: 85, alignment: .trailing)
+
+                            Text(ByteFormat.string(process.memoryBytes))
+                                .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(.secondary)
+                                .frame(width: 75, alignment: .trailing)
+                        } else {
+                            Text(ByteFormat.string(process.memoryBytes))
+                                .font(.system(.caption, design: .monospaced))
+                                .fontWeight(.bold)
+                                .foregroundStyle(process.memoryBytes >= 500 * 1024 * 1024 ? .blue : .primary)
+                                .frame(width: 85, alignment: .trailing)
+
+                            Text("\(process.cpuPercent, specifier: "%.1f")% CPU")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 75, alignment: .trailing)
                         }
+
+                        Button {
+                            pendingKillPID = (process.pid, info.displayName)
+                        } label: {
+                            Image(systemName: "xmark.circle")
+                                .font(.caption)
+                                .foregroundStyle(.red.opacity(0.8))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Terminate process (SIGTERM)")
                     }
-
-                    Spacer()
-
-                    Text("\(process.cpuPercent, specifier: "%.1f")% CPU")
-                        .font(.system(.caption2, design: .monospaced))
-                        .fontWeight(.medium)
-                        .foregroundStyle(process.cpuPercent >= 40 ? .red : .primary)
-                        .frame(width: 80, alignment: .trailing)
-
-                    Text(ByteFormat.string(process.memoryBytes))
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 75, alignment: .trailing)
-
-                    Button {
-                        pendingKillPID = (process.pid, process.name)
-                    } label: {
-                        Image(systemName: "xmark.circle")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Terminate process (SIGTERM)")
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 6)
+                    .background(isSelected ? Color.blue.opacity(0.08) : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .contentShape(Rectangle())
                 }
-                .padding(.vertical, 3)
+                .buttonStyle(.plain)
             }
         }
         .padding(16)

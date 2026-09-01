@@ -11,14 +11,12 @@ struct HomeView: View {
 
     @State private var volumeTotal: Int64 = 0
     @State private var volumeFree: Int64 = 0
+    @State private var showFDAModal = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-
-                // Permission Guidance Banner (if Full Disk Access not granted)
-                FullDiskAccessBanner()
 
                 // Storage Overview Card
                 if volumeTotal > 0 {
@@ -54,6 +52,9 @@ struct HomeView: View {
                 }
             }
             .padding(20)
+        }
+        .sheet(isPresented: $showFDAModal) {
+            FullDiskAccessModalView(isPresented: $showFDAModal)
         }
         .onAppear {
             deviceVM.send(.appearIfNeeded)
@@ -99,6 +100,22 @@ struct HomeView: View {
             }
 
             Spacer()
+
+            if !PermissionHelper.hasFullDiskAccess {
+                Button {
+                    showFDAModal = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.shield.fill")
+                        Text("Buka Full Disk Access")
+                    }
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+                .controlSize(.small)
+            }
         }
     }
 

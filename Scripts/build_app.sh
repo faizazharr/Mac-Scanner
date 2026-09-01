@@ -5,9 +5,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONFIG="${1:-release}"
-swift build -c "$CONFIG"
+if [ "$CONFIG" = "release" ]; then
+    swift build -c release -Xswiftc -Osize -Xswiftc -whole-module-optimization
+else
+    swift build -c "$CONFIG"
+fi
 
-BIN_PATH=".build/$(swift build -c "$CONFIG" --show-bin-path | xargs basename)"
 BIN_PATH=$(swift build -c "$CONFIG" --show-bin-path)/MacScanner
 
 APP_DIR="build/MacScanner.app"
@@ -16,6 +19,12 @@ mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
 cp "$BIN_PATH" "$APP_DIR/Contents/MacOS/MacScanner"
+
+# Strip unused local and debug symbols for minimum binary size in release builds
+if [ "$CONFIG" = "release" ]; then
+    strip -u -r "$APP_DIR/Contents/MacOS/MacScanner" 2>/dev/null || true
+fi
+
 cp Resources/Info.plist "$APP_DIR/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
 

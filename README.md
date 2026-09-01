@@ -1,72 +1,98 @@
-# MacScanner
+# MacScanner ⚡
 
-See where your Mac's storage actually goes, what's safe to clean up, and
-whether your Mac is running hot — all in one app, no Terminal required.
+**MacScanner** is an ultra-fast, lightweight (1.7 MB binary), and privacy-first macOS utility designed to monitor disk health, clean application leftovers, analyze performance, and test hardware diagnostics — all in one native app with 0% background overhead.
 
-Finder's own "About This Mac ▸ Storage" tells you a category is big. It
-doesn't tell you *which folder*, whether it's safe to delete, or that your
-Mac is about to overheat because three heavy apps are running at once.
-MacScanner does.
+---
 
-## Download
+## 🔒 Jaminan Privasi & Disclaimer Pengembang (Privacy & Zero-Data Collection Guarantee)
 
-**[⬇ Download the latest version](../../releases/latest)** — unzip, drag to
-Applications, open. No Xcode, no developer tools, no Terminal.
+> [!IMPORTANT]
+> ### 🛡️ Pernyataan Privasi Mutlak Pengembang (Official Privacy Mandate):
+>
+> 🇮🇩 **Bahasa Indonesia:**
+> **Pengembang TIDAK MENGAMBIL, MEREKAM, MEMINDAHKAN, MAUPUN MENYIMPAN INFORMASI PRIVASI APAPUN** dari pengguna yang menginstal aplikasi ini, maupun dari teman-teman yang ingin berkontribusi pada proyek ini (*open-source contributors*).
+> - **100% Eksekusi Lokal (*On-Device*)**: Seluruh pemindaian direktori, file sisa, telemetri prosesor/RAM/baterai, dan pemeriksaan hardware berjalan murni di dalam memori Mac Anda sendiri.
+> - **Zero Telemetry & Tanpa Server/Cloud**: MacScanner tidak memiliki server eksternal, tidak menggunakan SDK pelacak/analitik pihak ketiga, dan tidak pernah melakukan koneksi internet untuk mengirim data apapun. Data Anda adalah milik Anda sepenuhnya.
+>
+> 🇬🇧 **English:**
+> **The developer DOES NOT COLLECT, HARVEST, TRACK, TRANSMIT, OR STORE ANY PRIVATE INFORMATION OR TELEMETRY** from users who install this application, nor from community members contributing to this project.
+> - **100% On-Device Local Processing**: All disk analysis, leftover scans, memory/CPU/battery metrics, and hardware tests run strictly in local memory on your Mac.
+> - **Zero Telemetry & No Remote Servers**: MacScanner does not connect to any cloud backend, contains zero tracking SDKs, and never phones home. What happens on your Mac stays on your Mac.
 
-First time opening it, macOS will ask you to confirm since it's not from the
-App Store — see **[DOWNLOAD.md](DOWNLOAD.md)** for the two-minute walkthrough.
+---
 
-## What it does
+## 🚀 Key Features
 
-### 🏠 Home
-Open the app and immediately see your Mac's specs (model, chip, memory,
-battery health) and how full your storage is, with a card for each tool
-below so you can jump straight to what you need.
+### 🏠 1. System Overview & Hardware Specs
+- Instant hardware detection: **Apple Silicon Chip (M-Series)**, CPU/GPU Cores, Unified Memory, and macOS Build.
+- **Hardware Peripherals Check**: Real-time status for **Wi-Fi 6E/6 Card Interface**, **Bluetooth Controller**, and **Built-in Speaker System**.
+- **Battery Health**: Capacity percentage, cycle count, and battery condition (Normal/Service).
 
-### 📁 Folder Browser
-Click into any folder and see what's actually taking up space — sorted
-largest first, with a size bar next to each item and a colour-coded pie
-chart of the biggest offenders. Search within a folder, filter by file type
-(Video, Archives, Disk Images, Documents...), and jump anywhere with one
-click, including outside your home folder.
+### 🗑️ 2. Deep Root App Uninstaller
+- Scans installed `.app` bundles and uncovers **all hidden root leftovers** across `~/Library/Application Support`, `Caches`, `Containers`, `Group Containers`, `Logs`, and `LaunchAgents`.
+- **Automatic Instant Sizing**: Pre-calculates accurate disk space for all installed applications concurrently.
+- **Safe Trash Migration**: Uses native macOS Trash (`FileManager.trashItem`) so deletions remain 100% reversible.
 
-### ✨ Cleanup Recommendations
-A checklist of common space-wasters on your Mac — app caches, old backups,
-Docker/simulator data, build leftovers — each one sized and labeled **Safe
-to clean**, **Review first**, or **Manual review**, so you know exactly
-what you're deleting before you delete it.
+### ⏱️ 3. Mac & App Screen Time Screening
+- Uptime tracking, estimated active daily screen hours, and battery cycle health.
+- **Interactive Statistics Charts**: Compare screen duration, battery impact percentage, and disk footprint using Apple Swift Charts with customizable filters (`[ Jam Layar | Dampak Baterai | Ukuran Disk ]`).
 
-### 📄 Large Files
-Find every individual file over a size you choose (100 MB up to 5 GB+),
-filterable by type, searchable by name. Great for tracking down that one
-forgotten video export or old disk image.
+### ⚡ 4. Live System Performance & Root-Cause Inspector
+- Real-time Mach-kernel telemetry for **Memory, CPU, GPU, Swap, and Thermal State** with 0% idle CPU footprint.
+- **Inline Root-Cause Deep Dive**: Click any process to inspect worker threads, browser extensions, and web cache without disruptive pop-up dialogs. Direct controls for **Force Quit**, **Clear Cache**, and **Activity Monitor**.
 
-### ⚡ Performance
-Live gauges for Memory, CPU, GPU, Swap, and Thermal state — each one flags
-red the moment it's a real problem, with plain-language advice on what to
-do about it (not just a scary color). See which apps are currently the
-heaviest, watch trends over time on a live chart, and quit a runaway
-process directly from the list.
+### 🎨 5. Designer & Browser Bloat Screener
+- Tailored for designers and developers: Clean oversized caches from **Figma, Adobe Creative Cloud (Photoshop, Illustrator, Premiere, After Effects)**, and browsers (Chrome, Safari, Firefox, Edge, Arc) without deleting user drafts or login sessions.
 
-### On any of the above
-Every item — a folder, a cache, a large file, a process — can be **revealed
-in Finder** or **moved to Trash** with one click. Nothing is ever
-permanently deleted without a confirmation, and Trash is always reversible.
+### 🛠️ 6. Hardware Diagnostics & Testing
+- **Screen Dead Pixel Tester**: Multi-color canvas with auto-hiding HUD and instant `ESC` exit.
+- **Stereo Speaker L/R Engine**: Test left and right stereo audio channels independently.
+- **Microphone Level Meter**: Real-time decibel input gauge.
+- **Keyboard & Shortcut Tester**: Full 100% isolated key-code testing.
+- **Trackpad Multi-Touch Test**: Physical click, haptic feedback, and multi-finger gesture canvas.
 
-## Requirements
+---
 
-macOS 14.0 (Sonoma) or later. That's it — see
-**[DOWNLOAD.md](DOWNLOAD.md)** to get started.
+## 📦 Installation & Download
 
-## For developers
+**[⬇ Download Latest MacScanner.dmg](../../releases/latest)**
 
-Building from source, contributing, or curious how it works under the
-hood? See **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+1. Open `MacScanner.dmg`.
+2. Drag **MacScanner.app** into your **Applications** folder.
+3. Open the app and grant Full Disk Access when prompted for complete root cleaning capabilities.
 
-## Changelog
+---
 
-See [CHANGELOG.md](CHANGELOG.md).
+## 🤝 Contributor Guidelines & Standards
 
-## Copyright
+We welcome open-source contributions! To ensure MacScanner remains lightweight, robust, and safe, all contributors must strictly adhere to the following standards:
 
-Copyright © 2026 Faiz Azhar Ristya Nugraha — see [LICENSE](LICENSE).
+1. **Strict Zero-Telemetry Policy**:
+   - PRs must **NEVER** introduce external tracking, third-party analytics SDKs, or network telemetry requests.
+2. **SOLID & Single-Event Driven (UDF) Architecture**:
+   - Separate concerns across protocols in [`Sources/MacScanner/ServiceProtocols.swift`](Sources/MacScanner/ServiceProtocols.swift).
+   - All state mutations must flow through unidirectional action dispatches (`send(_ action:)`).
+   - Use dependency injection (`init(service: ...)`) for all ViewModels.
+3. **Zero-Bloat & Ultra-Lightweight Footprint**:
+   - Keep the binary size minimal (compiled with `-Osize` and symbol stripping).
+   - Never spawn unnecessary CLI sub-processes when native Darwin/Mach APIs are available.
+   - Stop background polling timers immediately when views disappear (`appear`/`disappear` lifecycle).
+4. **Safety First (Reversible Deletions)**:
+   - Always use `FileManager.default.trashItem` for file cleanups. Never use `rm -rf` or permanent deletion APIs.
+5. **Code Style & Concurrency**:
+   - Swift 6 strict concurrency compliance (`@MainActor` for UI, `Task.detached` for heavy I/O).
+   - Format code cleanly and verify with `swiftlint`.
+
+For detailed developer workflows and setup instructions, see [**`CONTRIBUTING.md`**](CONTRIBUTING.md) and [**`RELEASING.md`**](RELEASING.md).
+
+---
+
+## 🚀 Release & Semantic Versioning
+
+For instructions on publishing releases via Git tags, see [**`RELEASING.md`**](RELEASING.md).
+
+---
+
+## 📄 License
+
+Copyright © 2026 **Faiz Azhar Ristya Nugraha**. Released under the [MIT License](LICENSE).

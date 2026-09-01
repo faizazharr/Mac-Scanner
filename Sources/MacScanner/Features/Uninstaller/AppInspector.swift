@@ -136,51 +136,84 @@ enum AppInspector {
         )
     }
 
-    private static func canonicalName(for raw: String) -> String {
+    static func friendlyInfo(for raw: String) -> (displayName: String, description: String, icon: String, color: Color) {
         let lower = raw.lowercased()
-        if lower.contains("chrome") { return "Google Chrome" }
-        if lower.contains("figma") { return "Figma" }
-        if lower.contains("xcode") { return "Xcode" }
-        if lower.contains("arc") { return "Arc Browser" }
-        if lower.contains("brave") { return "Brave Browser" }
-        if lower.contains("edge") { return "Microsoft Edge" }
-        if lower.contains("firefox") { return "Mozilla Firefox" }
-        if lower.contains("safari") { return "Safari" }
-        if lower.contains("slack") { return "Slack" }
-        if lower.contains("photoshop") { return "Adobe Photoshop" }
-        if lower.contains("premiere") { return "Adobe Premiere Pro" }
-        if lower.contains("after effects") { return "Adobe After Effects" }
-        if lower.contains("blender") { return "Blender" }
-        if lower.contains("antigravity") { return "Antigravity" }
-        return raw
+        if lower == "du" || lower.hasPrefix("du ") {
+            return ("Disk Usage Scanner (du)", "Proses bawaan macOS yang menghitung ukuran berkas dan folder di disk saat pemindaian.", "externaldrive.badge.timemachine", .blue)
+        }
+        if lower == "find" || lower.hasPrefix("find ") {
+            return ("File Search Indexer (find)", "Proses bawaan macOS yang mencari berkas atau direktori di dalam disk.", "doc.text.magnifyingglass", .teal)
+        }
+        if lower == "mds" || lower == "mdworker" || lower.contains("mdworker") || lower == "mds_stores" {
+            return ("Spotlight Search Indexer (mds)", "Layanan latar belakang macOS yang mengindeks file untuk pencarian cepat Spotlight.", "sparkle.magnifyingglass", .indigo)
+        }
+        if lower == "cloudd" || lower == "bird" {
+            return ("iCloud Drive Sync (cloudd)", "Layanan latar belakang macOS untuk sinkronisasi berkas iCloud Drive.", "icloud.fill", .blue)
+        }
+        if lower == "syspolicyd" || lower == "trustd" {
+            return ("Gatekeeper Security (syspolicyd)", "Layanan keamanan macOS yang memverifikasi integritas dan sertifikat aplikasi.", "shield.checkerboard", .green)
+        }
+        if lower == "kernel_task" {
+            return ("macOS Core Kernel (kernel_task)", "Inti sistem operasi macOS yang mengelola RAM, CPU, dan manajemen suhu termal.", "cpu.fill", .gray)
+        }
+        if lower == "windowserver" {
+            return ("macOS Graphics Compositor (WindowServer)", "Layanan grafis macOS yang menggambar seluruh jendela, efek blur, dan layar Mac.", "macwindow.on.rectangle", .purple)
+        }
+        if lower == "git" {
+            return ("Git Version Control (git)", "Alat pelacak versi kode sumber pada proyek developer.", "arrow.triangle.branch", .orange)
+        }
+        if lower.contains("antigravity") {
+            return ("Google Antigravity Assistant", "Asisten pemrograman AI yang sedang aktif menjalankan tugas di Mac Anda.", "sparkles", .purple)
+        }
+        if lower.contains("chrome") {
+            return ("Google Chrome", "Browser web Google Chrome beserta tab dan ekstensinya.", "globe", .blue)
+        }
+        if lower.contains("figma") {
+            return ("Figma Desktop", "Aplikasi desain UI/UX berbasis cloud beserta tab kanvas dan render engine.", "paintbrush.pointed.fill", .pink)
+        }
+        if lower.contains("xcode") {
+            return ("Xcode IDE", "Lingkungan pengembangan aplikasi Apple (compiler, simulator, dan indexer).", "hammer.fill", .cyan)
+        }
+        if lower.contains("arc") {
+            return ("Arc Browser", "Browser web Arc beserta tab dan pengelola ruang kerja.", "globe", .purple)
+        }
+        if lower.contains("brave") {
+            return ("Brave Browser", "Browser web Brave yang berfokus pada privasi.", "globe", .orange)
+        }
+        if lower.contains("safari") || lower.contains("webcontent") {
+            return ("Safari Web Browser", "Browser web bawaan Apple macOS beserta konten tab aktif.", "safari.fill", .blue)
+        }
+        if lower.contains("spotify") {
+            return ("Spotify Music", "Aplikasi pemutar musik dan podcast streaming.", "music.note", .green)
+        }
+        if lower.contains("slack") {
+            return ("Slack", "Aplikasi komunikasi dan kolaborasi tim kerja.", "bubble.left.and.bubble.right.fill", .yellow)
+        }
+        if lower.contains("photoshop") {
+            return ("Adobe Photoshop", "Aplikasi edit grafis dan manipulasi foto raster.", "paintbrush.pointed.fill", .blue)
+        }
+        if lower.contains("premiere") {
+            return ("Adobe Premiere Pro", "Aplikasi penyunting video profesional.", "film.stack.fill", .purple)
+        }
+        if lower.contains("after effects") {
+            return ("Adobe After Effects", "Aplikasi efek visual dan animasi gerak.", "sparkles.tv.fill", .purple)
+        }
+        if lower.contains("docker") {
+            return ("Docker Desktop", "Platform virtualisasi container dan development runtime.", "shippingbox.fill", .blue)
+        }
+        return (raw, "Aplikasi pengguna atau proses latar belakang macOS.", "app.dashed", .accentColor)
+    }
+
+    private static func canonicalName(for raw: String) -> String {
+        friendlyInfo(for: raw).displayName
     }
 
     private static func icon(for canonical: String) -> String {
-        let lower = canonical.lowercased()
-        if lower.contains("chrome") || lower.contains("arc") || lower.contains("brave") || lower.contains("edge") || lower.contains("firefox") || lower.contains("safari") {
-            return "globe"
-        }
-        if lower.contains("figma") || lower.contains("photoshop") || lower.contains("illustrator") || lower.contains("sketch") {
-            return "paintbrush.pointed.fill"
-        }
-        if lower.contains("xcode") || lower.contains("code") {
-            return "hammer.fill"
-        }
-        if lower.contains("slack") || lower.contains("discord") || lower.contains("zoom") {
-            return "bubble.left.and.bubble.right.fill"
-        }
-        return "app.dashed"
+        friendlyInfo(for: canonical).icon
     }
 
     private static func color(for canonical: String) -> Color {
-        let lower = canonical.lowercased()
-        if lower.contains("chrome") { return .blue }
-        if lower.contains("figma") { return .pink }
-        if lower.contains("xcode") { return .cyan }
-        if lower.contains("arc") { return .purple }
-        if lower.contains("brave") { return .orange }
-        if lower.contains("slack") { return .yellow }
-        return .accentColor
+        friendlyInfo(for: canonical).color
     }
 
     private static var diskSizeCache: [String: (size: Int64, timestamp: Date)] = [:]

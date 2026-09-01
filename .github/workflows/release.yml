@@ -1,28 +1,38 @@
 name: Release
 
-# Builds MacScanner.app and MacScanner.dmg on a GitHub-hosted macOS runner
-# and attaches the .dmg installer to a GitHub Release whenever a version tag is pushed.
+# Automatically builds and publishes MacScanner.dmg to GitHub Releases
+# whenever a semantic version tag (e.g. v1.0.0) is pushed to master.
 on:
   push:
     tags:
-      - "v*.*.*"
-  workflow_dispatch: {}
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Semantic Version Tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
 
 jobs:
   build-and-release:
+    name: Build & Publish Release DMG
     runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
+    permissions:
+      contents: write
 
-      - name: Build MacScanner.app and MacScanner.dmg
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Optimized Release DMG
         run: |
           chmod +x Scripts/build_dmg.sh Scripts/build_app.sh
           ./Scripts/build_dmg.sh release
 
-      - name: Create GitHub Release
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            build/MacScanner.dmg
-            build/MacScanner.app
+          files: build/MacScanner.dmg
           generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -23,26 +23,80 @@ struct KeyDef: Identifiable, Hashable {
     }
 }
 
-/// Custom borderless window that can become key to receive ESC and keyboard events.
-private final class FullscreenTestWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
+// Hardware Key definition for Apple Mac keyboard layout.
 
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { // ESC
-            orderOut(nil)
-            (contentView as? NSHostingView<DeadPixelFullscreenView>)?.rootView.engine.exitDeadPixelTester()
-        } else if event.keyCode == 49 || event.keyCode == 124 { // Space or Right Arrow
-            (contentView as? NSHostingView<DeadPixelFullscreenView>)?.rootView.engine.nextDeadPixelColor()
-        } else if event.keyCode == 123 { // Left Arrow
-            (contentView as? NSHostingView<DeadPixelFullscreenView>)?.rootView.engine.previousDeadPixelColor()
-        } else {
-            super.keyDown(with: event)
+/// Native focusable NSView that intercepts keyboard events cleanly and safely.
+final class KeyboardResponderNSView: NSView {
+    var onKeyDown: ((UInt16, NSEvent.ModifierFlags, String?) -> Void)?
+    var onKeyUp: ((UInt16) -> Void)?
+    var onFlagsChanged: ((UInt16, NSEvent.ModifierFlags) -> Void)?
+
+    override var acceptsFirstResponder: Bool { true }
+    override var canBecomeKeyView: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil {
+            window?.makeFirstResponder(self)
         }
     }
 
-    override func mouseUp(with event: NSEvent) {
-        (contentView as? NSHostingView<DeadPixelFullscreenView>)?.rootView.engine.nextDeadPixelColor()
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        onKeyDown?(event.keyCode, event.modifierFlags, event.charactersIgnoringModifiers)
+    }
+
+    override func keyUp(with event: NSEvent) {
+        onKeyUp?(event.keyCode)
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        onFlagsChanged?(event.keyCode, event.modifierFlags)
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.type == .keyDown {
+            keyDown(with: event)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
+/// SwiftUI wrapper for KeyboardResponderNSView using standard AppKit Coordinator pattern.
+struct KeyboardResponderRepresentable: NSViewRepresentable {
+    @ObservedObject var engine: DeviceTestingEngine
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(engine: engine)
+    }
+
+    func makeNSView(context: Context) -> KeyboardResponderNSView {
+        let view = KeyboardResponderNSView()
+        view.onKeyDown = { [weak coordinator = context.coordinator] code, flags, chars in
+            coordinator?.engine.handleKeyDown(code: code, flags: flags, chars: chars)
+        }
+        view.onKeyUp = { [weak coordinator = context.coordinator] code in
+            coordinator?.engine.handleKeyUp(code: code)
+        }
+        view.onFlagsChanged = { [weak coordinator = context.coordinator] code, flags in
+            coordinator?.engine.handleFlagsChanged(code: code, flags: flags)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyboardResponderNSView, context: Context) {
+        context.coordinator.engine = engine
+    }
+
+    final class Coordinator {
+        var engine: DeviceTestingEngine
+        init(engine: DeviceTestingEngine) {
+            self.engine = engine
+        }
     }
 }
 
@@ -75,12 +129,9 @@ final class DeviceTestingEngine: ObservableObject {
 
     @Published var pressedKeyCodes: Set<UInt16> = []
     @Published var testedKeyCodes: Set<UInt16> = []
-    @Published var lastKeyPressedInfo: String = "Tekan tombol atau shortcut apapun pada keyboard..."
+    @Published var lastKeyPressedInfo: String = "Klik area keyboard lalu ketik tombol atau shortcut apapun..."
     @Published var detectedShortcutName: String? = nil
     @Published var totalKeystrokes: Int = 0
-    @Published var isShortcutInterceptionActive: Bool = true
-
-    private var keyEventMonitor: Any?
 
     // Full Apple Mac Keyboard Layout Definition
     static let functionRow: [KeyDef] = [
@@ -203,19 +254,9 @@ final class DeviceTestingEngine: ObservableObject {
         TestColor(name: "Cyan", color: .cyan, purpose: "Mendeteksi konsistensi warna.")
     ]
 
-    private var deadPixelWindow: FullscreenTestWindow?
     @Published var currentColorIndex = 0
 
-    // MARK: - Initialization & Lifecycle
-
-    init() {
-        startKeyboardMonitoring()
-    }
-
     deinit {
-        if let monitor = keyEventMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
         audioStopTimer?.invalidate()
         micLevelTimer?.invalidate()
     }
@@ -433,34 +474,17 @@ final class DeviceTestingEngine: ObservableObject {
         micAudioLevel = 0.0
     }
 
-    // MARK: - 3. Screen Dead Pixel Fullscreen Tester
+    // MARK: - 3. Screen Dead Pixel In-App Tester
+
+    @Published var isScreenTestActive: Bool = false
 
     func launchDeadPixelTester() {
         currentColorIndex = 0
-        showDeadPixelFullscreen()
+        isScreenTestActive = true
     }
 
-    private func showDeadPixelFullscreen() {
-        if deadPixelWindow == nil {
-            guard let screen = NSScreen.main else { return }
-            let window = FullscreenTestWindow(
-                contentRect: screen.frame,
-                styleMask: [.borderless],
-                backing: .buffered,
-                defer: false
-            )
-            window.level = .floating
-            window.isOpaque = true
-            window.hasShadow = false
-            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-
-            let hostingView = NSHostingView(rootView: DeadPixelFullscreenView(engine: self))
-            window.contentView = hostingView
-            self.deadPixelWindow = window
-        }
-
-        deadPixelWindow?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+    func exitDeadPixelTester() {
+        isScreenTestActive = false
     }
 
     func nextDeadPixelColor() {
@@ -471,63 +495,34 @@ final class DeviceTestingEngine: ObservableObject {
         currentColorIndex = (currentColorIndex - 1 + Self.screenColors.count) % Self.screenColors.count
     }
 
-    func exitDeadPixelTester() {
-        deadPixelWindow?.orderOut(nil)
-        deadPixelWindow?.close()
-        deadPixelWindow = nil
-    }
-
     var currentScreenTestColor: TestColor {
         Self.screenColors[currentColorIndex]
     }
 
-    // MARK: - 4. Intercepting Keyboard Monitoring & Shortcut Inspector
+    // MARK: - 4. Direct First-Responder Keyboard Event Handlers
 
-    private func startKeyboardMonitoring() {
-        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { [weak self] event in
-            guard let self = self else { return event }
+    func handleKeyDown(code: UInt16, flags: NSEvent.ModifierFlags, chars: String?) {
+        pressedKeyCodes.insert(code)
+        testedKeyCodes.insert(code)
+        totalKeystrokes += 1
 
-            let code = event.keyCode
-            let flags = event.modifierFlags
+        let keyName = humanName(for: code, chars: chars)
+        let shortcut = detectShortcut(flags: flags, keyCode: code, chars: chars)
 
-            DispatchQueue.main.async {
-                if event.type == .keyDown {
-                    self.pressedKeyCodes.insert(code)
-                    self.testedKeyCodes.insert(code)
-                    self.totalKeystrokes += 1
-
-                    let keyName = self.humanName(for: code, chars: event.charactersIgnoringModifiers)
-                    let shortcut = self.detectShortcut(flags: flags, keyCode: code, chars: event.charactersIgnoringModifiers)
-
-                    if let shortcut = shortcut {
-                        self.detectedShortcutName = shortcut
-                        self.lastKeyPressedInfo = "⚡ Shortcut: \(shortcut) • KeyCode: \(code)"
-                    } else {
-                        self.detectedShortcutName = nil
-                        self.lastKeyPressedInfo = "Tombol: \(keyName) • Hardware KeyCode: \(code)"
-                    }
-                } else if event.type == .keyUp {
-                    self.pressedKeyCodes.remove(code)
-                } else if event.type == .flagsChanged {
-                    self.handleFlagsChanged(event: event)
-                }
-            }
-
-            // If shortcut interception is active, swallow the event (return nil)
-            // so Cmd+Q, Cmd+W, Cmd+H, Space, Tab, or ESC don't trigger app menus,
-            // close windows, or interfere with other applications!
-            if self.isShortcutInterceptionActive {
-                return nil
-            }
-
-            return event
+        if let shortcut = shortcut {
+            detectedShortcutName = shortcut
+            lastKeyPressedInfo = "⚡ Shortcut: \(shortcut) • KeyCode: \(code)"
+        } else {
+            detectedShortcutName = nil
+            lastKeyPressedInfo = "Tombol: \(keyName) • Hardware KeyCode: \(code)"
         }
     }
 
-    private func handleFlagsChanged(event: NSEvent) {
-        let code = event.keyCode
-        let flags = event.modifierFlags
+    func handleKeyUp(code: UInt16) {
+        pressedKeyCodes.remove(code)
+    }
 
+    func handleFlagsChanged(code: UInt16, flags: NSEvent.ModifierFlags) {
         let isDown: Bool
         switch code {
         case 56, 60: // Shift L / R
@@ -667,7 +662,7 @@ final class DeviceTestingEngine: ObservableObject {
         testedKeyCodes.removeAll()
         detectedShortcutName = nil
         totalKeystrokes = 0
-        lastKeyPressedInfo = "Matrix di-reset. Tekan tombol atau shortcut apapun untuk menguji..."
+        lastKeyPressedInfo = "Matrix di-reset. Ketik tombol atau shortcut apapun untuk menguji..."
     }
 
     // MARK: - 5. Trackpad & Haptic Feedback
@@ -677,9 +672,11 @@ final class DeviceTestingEngine: ObservableObject {
     }
 }
 
-/// Fullscreen overlay view for Dead Pixel & Backlight Bleed inspection.
+/// In-App Fullscreen Overlay view for Dead Pixel & Backlight Bleed inspection.
 struct DeadPixelFullscreenView: View {
     @ObservedObject var engine: DeviceTestingEngine
+    @State private var showHUD: Bool = true
+    @State private var hideHUDTimer: Timer?
 
     var body: some View {
         let testColor = engine.currentScreenTestColor
@@ -689,60 +686,90 @@ struct DeadPixelFullscreenView: View {
             Color(nsColor: testColor.color)
                 .ignoresSafeArea()
 
-            VStack(spacing: 8) {
-                HStack(spacing: 12) {
-                    Text(testColor.name)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(isLight ? .black : .white)
+            if showHUD {
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        Text(testColor.name)
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundStyle(isLight ? .black : .white)
 
-                    Text("•")
-                        .foregroundStyle(isLight ? .black : .white)
+                        Text("•")
+                            .foregroundStyle(isLight ? .black : .white)
 
-                    Text(testColor.purpose)
-                        .font(.callout)
-                        .foregroundStyle(isLight ? .black.opacity(0.8) : .white.opacity(0.8))
+                        Text(testColor.purpose)
+                            .font(.subheadline)
+                            .foregroundStyle(isLight ? .black.opacity(0.8) : .white.opacity(0.8))
 
-                    Spacer()
+                        Spacer()
 
-                    Button {
-                        engine.exitDeadPixelTester()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "xmark.circle.fill")
-                            Text("Keluar (ESC)")
-                                .fontWeight(.bold)
+                        Button {
+                            engine.exitDeadPixelTester()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "xmark.circle.fill")
+                                Text("Kembali ke Aplikasi (ESC)")
+                                    .fontWeight(.bold)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.red)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                }
 
-                HStack {
-                    Text("Klik layar / tekan [Spasi] untuk ganti warna • [← / →] geser warna • [ESC] keluar")
-                        .font(.caption)
-                        .foregroundStyle(isLight ? .black.opacity(0.6) : .white.opacity(0.6))
-                    Spacer()
+                    HStack {
+                        Text("Klik layar / tekan [Spasi] untuk ganti warna • [← / →] geser warna • [ESC] kembali")
+                            .font(.caption)
+                            .foregroundStyle(isLight ? .black.opacity(0.6) : .white.opacity(0.6))
+                        Spacer()
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(
+                    (isLight ? Color.white : Color.black)
+                        .opacity(0.75)
+                        .blur(radius: 10)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .padding(16)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
-            .background(
-                (isLight ? Color.white : Color.black)
-                    .opacity(0.75)
-                    .blur(radius: 10)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .padding(20)
-            .frame(maxHeight: .infinity, alignment: .top)
         }
         .contentShape(Rectangle())
         .onTapGesture {
             engine.nextDeadPixelColor()
+            flashHUD()
+        }
+        .onHover { isHovered in
+            if isHovered {
+                flashHUD()
+            }
+        }
+        .onAppear {
+            scheduleHUDAutoHide()
+        }
+    }
+
+    private func flashHUD() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showHUD = true
+        }
+        scheduleHUDAutoHide()
+    }
+
+    private func scheduleHUDAutoHide() {
+        hideHUDTimer?.invalidate()
+        hideHUDTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
+            Task { @MainActor in
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showHUD = false
+                }
+            }
         }
     }
 }

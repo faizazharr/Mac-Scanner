@@ -292,12 +292,10 @@ enum PerformanceMonitor {
     private static var previousCPUTicks: (user: UInt32, sys: UInt32, idle: UInt32, nice: UInt32)?
 
     /// Captures a live snapshot using Mach kernel APIs and a single-pass process inspection.
-    static func capture(processLimit: Int = 16, includeMemorySortedProcesses: Bool = true) -> Snapshot {
+    static func capture(processLimit: Int = 25) -> Snapshot {
         let allProcesses = fetchAllProcesses()
         let byCPU = Array(allProcesses.sorted { $0.cpuPercent > $1.cpuPercent }.prefix(processLimit))
-        let byMem = includeMemorySortedProcesses
-            ? Array(allProcesses.sorted { $0.memoryBytes > $1.memoryBytes }.prefix(processLimit))
-            : []
+        let byMem = Array(allProcesses.sorted { $0.memoryBytes > $1.memoryBytes }.prefix(processLimit))
 
         return Snapshot(
             memory: memorySnapshot(),

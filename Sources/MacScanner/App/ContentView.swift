@@ -12,6 +12,8 @@ enum ScreenerTab: String, CaseIterable, Identifiable {
     case recommendations = "Recommendations"
     case largeFiles = "Large Files"
     case performance = "Performance"
+    case appUninstaller = "App Uninstaller"
+    case screening = "Screen Time & Usage"
     case deviceTesting = "Hardware Test"
 
     var id: String { rawValue }
@@ -24,6 +26,8 @@ enum ScreenerTab: String, CaseIterable, Identifiable {
         case .recommendations: return "sparkles"
         case .largeFiles: return "doc.badge.gearshape.fill"
         case .performance: return "gauge.with.dots.needle.67percent"
+        case .appUninstaller: return "trash.circle.fill"
+        case .screening: return "hourglass.bottomhalf.filled"
         case .deviceTesting: return "wrench.and.screwdriver.fill"
         }
     }
@@ -36,6 +40,8 @@ enum ScreenerTab: String, CaseIterable, Identifiable {
         case .recommendations: return .green
         case .largeFiles: return .purple
         case .performance: return .orange
+        case .appUninstaller: return .indigo
+        case .screening: return .purple
         case .deviceTesting: return .teal
         }
     }
@@ -177,6 +183,10 @@ struct ContentView: View {
             LargeFilesView()
         case .performance:
             PerformanceView(vm: performanceVM, deviceVM: deviceVM)
+        case .appUninstaller:
+            AppUninstallerView()
+        case .screening:
+            ScreeningView(deviceVM: deviceVM)
         case .deviceTesting:
             DeviceTestingView(deviceVM: deviceVM)
         }
