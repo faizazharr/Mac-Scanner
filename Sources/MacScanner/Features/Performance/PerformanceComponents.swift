@@ -6,7 +6,7 @@ import AppKit
 
 // MARK: - Performance Gauge Card
 
-struct GaugeCard: View {
+struct GaugeCard: View, Equatable {
     let title: String
     let icon: String
     let valueLabel: String
@@ -14,6 +14,10 @@ struct GaugeCard: View {
     let fraction: Double
     let risk: LoadRisk
     let redLineFraction: Double?
+
+    static func == (lhs: GaugeCard, rhs: GaugeCard) -> Bool {
+        lhs.valueLabel == rhs.valueLabel && lhs.subLabel == rhs.subLabel && lhs.fraction == rhs.fraction && lhs.risk == rhs.risk
+    }
 
     private let barHeight: CGFloat = 8
 
@@ -80,9 +84,13 @@ struct GaugeCard: View {
 
 // MARK: - Performance Thermal Card
 
-struct ThermalCard: View {
+struct ThermalCard: View, Equatable {
     let state: ProcessInfo.ThermalState
     let risk: LoadRisk
+
+    static func == (lhs: ThermalCard, rhs: ThermalCard) -> Bool {
+        lhs.state == rhs.state && lhs.risk == rhs.risk
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

@@ -183,7 +183,7 @@ final class AppUninstallerEngine: ObservableObject {
                     continue
                 }
 
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
+                let icon = AppIconCache.shared.icon(for: url.path)
                 let isSystem = url.path.hasPrefix("/System/") || name == "Finder"
 
                 rawApps.append((name: name, bundleID: bundleID, bundleURL: url, icon: icon, version: version, isSystem: isSystem))

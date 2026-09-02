@@ -8,8 +8,12 @@ import Charts
 ///
 /// Smoothly plots CPU and Memory percentage histories with Catmull-Rom spline interpolation
 /// and subtle gradient area fills.
-struct SparklineChartView: View {
+struct SparklineChartView: View, Equatable {
     let history: [PerformanceHistoryPoint]
+
+    static func == (lhs: SparklineChartView, rhs: SparklineChartView) -> Bool {
+        lhs.history.count == rhs.history.count && lhs.history.last?.timestamp == rhs.history.last?.timestamp
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {

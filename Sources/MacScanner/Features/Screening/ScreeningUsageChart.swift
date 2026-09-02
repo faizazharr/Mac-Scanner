@@ -5,9 +5,13 @@ import SwiftUI
 import Charts
 
 /// Interactive bar chart comparing application screen duration, power impact, and disk footprint.
-struct ScreeningUsageChart: View {
+struct ScreeningUsageChart: View, Equatable {
     let apps: [AppUsageScreeningItem]
     @Binding var chartMetric: ScreeningView.ChartMetric
+
+    static func == (lhs: ScreeningUsageChart, rhs: ScreeningUsageChart) -> Bool {
+        lhs.chartMetric == rhs.chartMetric && lhs.apps.count == rhs.apps.count && lhs.apps.first?.name == rhs.apps.first?.name
+    }
 
     private var chartData: [AppUsageScreeningItem] {
         Array(apps.prefix(7))

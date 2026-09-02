@@ -203,11 +203,17 @@ final class PerformanceViewModel: ObservableObject {
 
     private func startAutoRefresh() {
         stopAutoRefresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
+        let interval: TimeInterval = isOnBattery ? 7.0 : 3.5
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.refresh()
             }
         }
+    }
+
+    private var isOnBattery: Bool {
+        let output = Shell.run("/usr/bin/pmset", ["-g", "batt"])
+        return output.contains("Battery Power")
     }
 
     private func stopAutoRefresh() {

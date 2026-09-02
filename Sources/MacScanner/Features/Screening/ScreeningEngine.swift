@@ -166,7 +166,7 @@ final class ScreeningEngine: ObservableObject {
                       !seenIDs.contains(bundleID) else { continue }
 
                 seenIDs.insert(bundleID)
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
+                let icon = AppIconCache.shared.icon(for: url.path)
                 let isRunning = runningBundleIDs.contains(bundleID)
 
                 // Approximate app size
