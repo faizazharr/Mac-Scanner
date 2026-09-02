@@ -20,6 +20,9 @@ struct BackgroundServiceRow: View, Equatable {
                 .frame(width: 8, height: 8)
                 .shadow(color: riskColor.opacity(0.5), radius: 3)
 
+            // Owner app icon (dynamically resolved from bundle, fallback to SF Symbol)
+            ownerIconView
+
             // Type badge
             Text(service.type.rawValue)
                 .font(.system(size: 9, weight: .bold))
@@ -94,6 +97,22 @@ struct BackgroundServiceRow: View, Equatable {
     }
 
     // MARK: - Sub-Views
+
+    @ViewBuilder
+    private var ownerIconView: some View {
+        if let icon = service.ownerIcon {
+            Image(nsImage: icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 20, height: 20)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        } else {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, height: 20)
+        }
+    }
 
     private func metricPill(icon: String, value: String, color: Color) -> some View {
         HStack(spacing: 3) {

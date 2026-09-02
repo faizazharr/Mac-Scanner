@@ -38,6 +38,7 @@ struct BackgroundService: Identifiable, Equatable {
     let label: String          // e.g. com.adobe.adobeupdatedaemon
     let displayName: String    // e.g. Adobe Update Daemon
     let ownerApp: String?      // e.g. Adobe Creative Cloud
+    let ownerIcon: NSImage?    // Icon pulled from the owning .app bundle
     let type: ServiceType
     let status: ServiceStatus
     let cpuPercent: Double
@@ -61,6 +62,11 @@ struct BackgroundService: Identifiable, Equatable {
 
 /// High-performance scanner that combines launchctl, ps, and plist folder inspection
 /// to produce a unified list of all background services running on the system.
+///
+/// Owner app names and display names are resolved **dynamically** from:
+///   1. `ProgramArguments`/`Program` in the service plist → .app bundle → Info.plist
+///   2. `NSWorkspace.shared.urlForApplication(withBundleIdentifier:)` via bundle ID prefix
+///   3. Derivation from the service label string itself (no hardcoded names)
 enum BackgroundServiceScanner {
 
     // MARK: - Plist Directories
@@ -86,45 +92,59 @@ enum BackgroundServiceScanner {
         let launchctlEntries = parseLaunchctlList()
         let processMap = buildProcessMap()
 
-        var plistMap: [String: (url: URL, type: ServiceType, isThirdParty: Bool)] = [:]
-        collectPlists(from: agentDirs,       type: .launchAgent,  isThirdParty: true,  into: &plistMap)
-        collectPlists(from: daemonDirs,      type: .launchDaemon, isThirdParty: true,  into: &plistMap)
-        collectPlists(from: systemDaemonDirs, type: .system,      isThirdParty: false, into: &plistMap)
+        // plistMap: label → (url, type, isThirdParty, plistDict)
+        var plistMap: [String: PlistInfo] = [:]
+        collectPlists(from: agentDirs,        type: .launchAgent,  isThirdParty: true,  into: &plistMap)
+        collectPlists(from: daemonDirs,       type: .launchDaemon, isThirdParty: true,  into: &plistMap)
+        collectPlists(from: systemDaemonDirs, type: .system,       isThirdParty: false, into: &plistMap)
 
         var results: [BackgroundService] = []
 
         for entry in launchctlEntries {
             let pidOpt = entry.pid
-            let plistInfo = plistMap[entry.label]
+            let info = plistMap[entry.label]
             let processStats = pidOpt.flatMap { processMap[$0] }
 
             let status: ServiceStatus
             if let pid = pidOpt, pid > 0 {
                 status = .running(pid: pid)
-            } else if entry.label.contains("demand") {
+            } else if entry.label.lowercased().contains("demand") {
                 status = .onDemand
             } else {
                 status = .idle
             }
 
-            let type_: ServiceType = plistInfo?.type ?? (entry.label.hasPrefix("com.apple") ? .system : .launchAgent)
-            let isThirdParty = plistInfo?.isThirdParty ?? !entry.label.hasPrefix("com.apple")
+            let type_: ServiceType = info?.type ?? (entry.label.hasPrefix("com.apple") ? .system : .launchAgent)
+            let isThirdParty = info?.isThirdParty ?? !entry.label.hasPrefix("com.apple")
+
+            // Dynamic owner resolution — no hardcoded names
+            let resolved = resolveOwner(for: entry.label, plistInfo: info)
 
             results.append(BackgroundService(
                 id: UUID(),
                 label: entry.label,
-                displayName: friendlyName(for: entry.label),
-                ownerApp: ownerApp(for: entry.label),
+                displayName: resolved.displayName,
+                ownerApp: resolved.ownerApp,
+                ownerIcon: resolved.icon,
                 type: type_,
                 status: status,
                 cpuPercent: processStats?.cpu ?? 0,
                 memoryBytes: processStats?.memBytes ?? 0,
-                plistURL: plistInfo?.url,
+                plistURL: info?.url,
                 isThirdParty: isThirdParty
             ))
         }
 
         return results.sorted { $0.cpuPercent > $1.cpuPercent }
+    }
+
+    // MARK: - Plist Info
+
+    private struct PlistInfo {
+        let url: URL
+        let type: ServiceType
+        let isThirdParty: Bool
+        let dict: [String: Any]
     }
 
     // MARK: - launchctl list Parser
@@ -181,72 +201,116 @@ enum BackgroundServiceScanner {
         from dirs: [URL],
         type: ServiceType,
         isThirdParty: Bool,
-        into map: inout [String: (url: URL, type: ServiceType, isThirdParty: Bool)]
+        into map: inout [String: PlistInfo]
     ) {
         let fm = FileManager.default
         for dir in dirs {
             guard let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { continue }
             for url in contents where url.pathExtension == "plist" {
                 let label = url.deletingPathExtension().lastPathComponent
-                map[label] = (url, type, isThirdParty)
+                let dict = (NSDictionary(contentsOf: url) as? [String: Any]) ?? [:]
+                map[label] = PlistInfo(url: url, type: type, isThirdParty: isThirdParty, dict: dict)
             }
         }
     }
 
-    // MARK: - Friendly Name Derivation
+    // MARK: - Dynamic Owner Resolution
 
-    private static func friendlyName(for label: String) -> String {
-        let knownNames: [String: String] = [
-            "com.apple.coreduetd": "Core Duet Daemon",
-            "com.apple.coreanalyticsd": "Core Analytics",
-            "com.apple.softwareupdated": "Software Update Daemon",
-            "com.apple.backgroundtaskmanagementagent": "Background Task Agent",
-            "com.apple.mdworker_shared": "Spotlight Worker",
-            "com.apple.mds": "Spotlight Indexer",
-            "com.apple.trustd": "Trust Policy Daemon",
-            "com.apple.logd": "Log Daemon",
-            "com.apple.WindowServer": "Window Server",
-            "com.apple.UserEventAgent": "User Event Agent",
-            "com.adobe.adobeupdatedaemon": "Adobe Update Daemon",
-            "com.adobe.GC.AGM": "Adobe Creative Cloud AGM",
-            "com.docker.dockerd": "Docker Engine",
-            "com.spotify.webhelper": "Spotify Web Helper",
-            "com.google.keystone.agent": "Google Update Agent",
-            "com.microsoft.autoupdate.helper": "Microsoft AutoUpdate",
-            "com.jetbrains.toolbox.shims": "JetBrains Toolbox",
-            "com.dropbox.client": "Dropbox",
-            "com.figma.agent": "Figma Agent",
-        ]
-
-        if let known = knownNames[label] { return known }
-
-        // Derive from last component: com.adobe.adobeupdatedaemon → Adobeupdatedaemon
-        let parts = label.split(separator: ".")
-        if let last = parts.last {
-            return last.split(separator: "-")
-                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-                .joined(separator: " ")
-        }
-
-        return label
+    private struct ResolvedOwner {
+        let displayName: String
+        let ownerApp: String?
+        let icon: NSImage?
     }
 
-    private static func ownerApp(for label: String) -> String? {
-        let ownerMap: [String: String] = [
-            "com.adobe":           "Adobe Creative Cloud",
-            "com.docker":          "Docker Desktop",
-            "com.spotify":         "Spotify",
-            "com.google.keystone": "Google Software Updater",
-            "com.microsoft":       "Microsoft Office",
-            "com.jetbrains":       "JetBrains Toolbox",
-            "com.dropbox":         "Dropbox",
-            "com.figma":           "Figma",
-        ]
+    /// Resolves the display name and owning application for a service **without any hardcoded names**.
+    ///
+    /// Resolution order:
+    /// 1. Parse `Program` / `ProgramArguments[0]` from the plist → walk up the path
+    ///    tree to find an `.app` bundle → read `CFBundleDisplayName` / `CFBundleName`
+    ///    and the app icon from the bundle's `Info.plist`.
+    /// 2. Try `NSWorkspace.urlForApplication(withBundleIdentifier:)` using the service
+    ///    label as a bundle identifier (works when the label == the app's bundle ID).
+    /// 3. Derive a human-readable name from the service label itself by splitting on
+    ///    dots and capitalising each component word (pure string transform, no lookup table).
+    private static func resolveOwner(for label: String, plistInfo: PlistInfo?) -> ResolvedOwner {
 
-        for (prefix, app) in ownerMap {
-            if label.hasPrefix(prefix) { return app }
+        // ── Strategy 1: extract executable path from plist ──────────────────
+        if let dict = plistInfo?.dict {
+            let execPath: String? = {
+                if let prog = dict["Program"] as? String { return prog }
+                if let args = dict["ProgramArguments"] as? [String], let first = args.first { return first }
+                return nil
+            }()
+
+            if let execPath, let appBundle = appBundle(containingExecutable: URL(fileURLWithPath: execPath)) {
+                let name = bundleDisplayName(at: appBundle)
+                let icon = NSWorkspace.shared.icon(forFile: appBundle.path)
+                return ResolvedOwner(
+                    displayName: serviceDisplayName(from: label),
+                    ownerApp: name,
+                    icon: icon
+                )
+            }
         }
-        if label.hasPrefix("com.apple") { return nil }
+
+        // ── Strategy 2: label as bundle ID → NSWorkspace lookup ─────────────
+        if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: label) {
+            let name = bundleDisplayName(at: appURL)
+            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            return ResolvedOwner(displayName: serviceDisplayName(from: label), ownerApp: name, icon: icon)
+        }
+
+        // Try trimming last component: com.apple.mdworker_shared → com.apple.mdworker
+        let parentID = label.components(separatedBy: ".").dropLast().joined(separator: ".")
+        if parentID.count > 4,
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: parentID) {
+            let name = bundleDisplayName(at: appURL)
+            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            return ResolvedOwner(displayName: serviceDisplayName(from: label), ownerApp: name, icon: icon)
+        }
+
+        // ── Strategy 3: pure string derivation ──────────────────────────────
+        return ResolvedOwner(
+            displayName: serviceDisplayName(from: label),
+            ownerApp: nil,
+            icon: nil
+        )
+    }
+
+    /// Walks up the directory tree from `executableURL` to find the nearest `.app` bundle.
+    private static func appBundle(containingExecutable url: URL) -> URL? {
+        var current = url.deletingLastPathComponent()
+        for _ in 0..<8 {
+            if current.pathExtension == "app" { return current }
+            let parent = current.deletingLastPathComponent()
+            if parent == current { break }
+            current = parent
+        }
         return nil
+    }
+
+    /// Reads `CFBundleDisplayName` → `CFBundleName` → last path component from a bundle URL.
+    private static func bundleDisplayName(at url: URL) -> String {
+        let infoPlist = url.appendingPathComponent("Contents/Info.plist")
+        if let dict = NSDictionary(contentsOf: infoPlist) as? [String: Any] {
+            if let name = dict["CFBundleDisplayName"] as? String, !name.isEmpty { return name }
+            if let name = dict["CFBundleName"] as? String, !name.isEmpty { return name }
+        }
+        return url.deletingPathExtension().lastPathComponent
+    }
+
+    /// Derives a human-readable service display name from its reverse-DNS label.
+    ///
+    /// Examples:
+    ///   `com.apple.coreanalyticsd`  →  "Coreanalyticsd"
+    ///   `com.docker.dockerd`        →  "Dockerd"
+    ///   `com.spotify.webhelper`     →  "Web Helper"
+    private static func serviceDisplayName(from label: String) -> String {
+        guard let lastPart = label.split(separator: ".").last.map(String.init) else { return label }
+        // Split on hyphens/underscores, capitalise each word
+        let words = lastPart
+            .components(separatedBy: .init(charactersIn: "-_"))
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+        return words.joined(separator: " ")
     }
 }
