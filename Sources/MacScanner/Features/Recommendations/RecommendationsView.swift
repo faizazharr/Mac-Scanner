@@ -106,125 +106,32 @@ struct RecommendationsView: View {
             // Recommendation Cards List
             if !vm.filteredResults.isEmpty {
                 List(vm.filteredResults) { rec in
-                    let isSelected = vm.selectedIDs.contains(rec.id)
-                    HStack(alignment: .top, spacing: 14) {
-                        // Multi-select Checkbox
-                        if rec.risk != .manual {
-                            Button {
-                                if isSelected {
-                                    vm.selectedIDs.remove(rec.id)
-                                } else {
-                                    vm.selectedIDs.insert(rec.id)
-                                }
-                            } label: {
-                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3)
-                                    .foregroundStyle(isSelected ? Color.green : Color.secondary.opacity(0.4))
+                    RecommendationCard(
+                        item: rec,
+                        isSelected: vm.selectedIDs.contains(rec.id),
+                        onToggleSelect: {
+                            if vm.selectedIDs.contains(rec.id) {
+                                vm.selectedIDs.remove(rec.id)
+                            } else {
+                                vm.selectedIDs.insert(rec.id)
                             }
-                            .buttonStyle(.plain)
-                            .padding(.top, 2)
-                        } else {
-                            Image(systemName: "hand.raised.fill")
-                                .font(.callout)
-                                .foregroundStyle(.red)
-                                .frame(width: 22)
-                                .padding(.top, 2)
-                        }
-
-                        // Icon
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(rec.risk.color.opacity(0.14))
-                                .frame(width: 34, height: 34)
-                            Image(systemName: rec.iconName)
-                                .font(.body.bold())
-                                .foregroundStyle(rec.risk.color)
-                        }
-
-                        // Info
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: 8) {
-                                Text(rec.title)
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
-                                Pill(text: rec.risk.rawValue, color: rec.risk.color, icon: rec.risk.icon)
-                                Pill(text: rec.category.rawValue, color: .secondary, icon: rec.category.icon)
-                            }
-                            Text(rec.explanation)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Text(rec.path.path)
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.tertiary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-
-                        Spacer()
-
-                        // Size & Action Buttons
-                        VStack(alignment: .trailing, spacing: 6) {
-                            Text(rec.sizeBytes > 0 ? ByteFormat.string(rec.sizeBytes) : "—")
-                                .font(.system(.subheadline, design: .monospaced))
-                                .fontWeight(.bold)
-
-                            HStack(spacing: 6) {
-                                Button {
-                                    FileActions.reveal(rec.path)
-                                } label: {
-                                    Label("Reveal", systemImage: "arrow.up.forward.app")
-                                        .font(.caption2)
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.mini)
-
-                                if rec.title.contains("Docker Data") {
-                                    Button {
-                                        vm.send(.dockerSmartPrune)
-                                    } label: {
-                                        Label("Smart Prune", systemImage: "sparkles")
-                                            .font(.caption2)
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.blue)
-                                    .controlSize(.mini)
-                                } else if rec.title.contains("iOS/Simulator") {
-                                    Button {
-                                        vm.send(.simulatorCleanUnavailable)
-                                    } label: {
-                                        Label("Clean Old", systemImage: "sparkles")
-                                            .font(.caption2)
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.orange)
-                                    .controlSize(.mini)
-                                } else if rec.risk != .manual {
-                                    Button {
-                                        pendingTrash = rec.path
-                                    } label: {
-                                        Label("Trash", systemImage: "trash")
-                                            .font(.caption2)
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.red)
-                                    .controlSize(.mini)
-                                }
+                        },
+                        onReveal: { FileActions.reveal(rec.path) },
+                        onCopyPath: { FileActions.copyPath(rec.path) },
+                        onAction: {
+                            if rec.title.contains("Docker Data") {
+                                vm.send(.dockerSmartPrune)
+                            } else if rec.title.contains("iOS/Simulator") {
+                                vm.send(.simulatorCleanUnavailable)
+                            } else if rec.risk != .manual {
+                                pendingTrash = rec.path
                             }
                         }
-                    }
-                    .padding(10)
-                    .glassCard(tint: isSelected ? .green : .secondary, opacity: isSelected ? 0.12 : 0.05)
-                    .listRowSeparator(.hidden)
-                    .contextMenu {
-                        Button("Reveal in Finder") { FileActions.reveal(rec.path) }
-                        Button("Copy Path") { FileActions.copyPath(rec.path) }
-                        if rec.risk != .manual {
-                            Button("Move to Trash", role: .destructive) { pendingTrash = rec.path }
-                        }
-                    }
+                    )
+                    .equatable()
                 }
-                .listStyle(.plain)
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
             } else if vm.isScanning {
                 VStack(spacing: 16) {
                     Spacer()

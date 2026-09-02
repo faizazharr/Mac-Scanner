@@ -72,7 +72,7 @@ struct LargeFilesView: View {
                                     vm.minMB = mb
                                     vm.send(.rescan)
                                 } label: {
-                                    Text(mb >= 1000 ? "\(mb / 1000) GB" : "\(mb) MB")
+                                    Text(presetLabel(for: mb))
                                         .font(.caption2)
                                         .fontWeight(vm.minMB == mb ? .bold : .medium)
                                         .lineLimit(1)
@@ -248,77 +248,15 @@ struct LargeFilesView: View {
                 scanningHeroView
             } else if !vm.filteredFiles.isEmpty {
                 List(vm.filteredFiles) { file in
-                    let isSelected = vm.selectedIDs.contains(file.id)
-                    HStack(spacing: 12) {
-                        Button {
-                            vm.send(.toggleSelect(file.id))
-                        } label: {
-                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                .font(.title3)
-                                .foregroundStyle(isSelected ? Color.purple : Color.secondary.opacity(0.4))
-                        }
-                        .buttonStyle(.plain)
-
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(file.category.color.opacity(0.15))
-                                .frame(width: 32, height: 32)
-                            Image(systemName: file.category.icon)
-                                .font(.caption.bold())
-                                .foregroundStyle(file.category.color)
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(file.name)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                            Text(file.url.deletingLastPathComponent().path)
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.tertiary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-
-                        Spacer()
-
-                        Pill(text: file.url.pathExtension.isEmpty ? "FILE" : file.url.pathExtension.uppercased(), color: file.category.color)
-
-                        Text(file.sizeString)
-                            .font(.system(.subheadline, design: .monospaced))
-                            .fontWeight(.bold)
-                            .frame(width: 90, alignment: .trailing)
-
-                        HStack(spacing: 6) {
-                            Button {
-                                FileActions.reveal(file.url)
-                            } label: {
-                                Image(systemName: "arrow.up.forward.app")
-                                    .font(.caption)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Reveal in Finder")
-
-                            Button {
-                                pendingTrash = file.url
-                            } label: {
-                                Image(systemName: "trash")
-                                    .font(.caption)
-                                    .foregroundStyle(.red)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Move to Trash")
-                        }
-                    }
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
-                    .contextMenu {
-                        Button("Reveal in Finder") { FileActions.reveal(file.url) }
-                        Button("Copy Full Path") { FileActions.copyPath(file.url) }
-                        Divider()
-                        Button("Move to Trash", role: .destructive) { pendingTrash = file.url }
-                    }
+                    LargeFileRow(
+                        file: file,
+                        isSelected: vm.selectedIDs.contains(file.id),
+                        onToggleSelect: { vm.send(.toggleSelect(file.id)) },
+                        onReveal: { FileActions.reveal(file.url) },
+                        onCopyPath: { FileActions.copyPath(file.url) },
+                        onTrash: { pendingTrash = file.url }
+                    )
+                    .equatable()
                 }
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
@@ -398,5 +336,9 @@ struct LargeFilesView: View {
         if panel.runModal() == .OK, let url = panel.url {
             vm.send(.setCustomScope(url))
         }
+    }
+
+    private func presetLabel(for mb: Int) -> String {
+        mb >= 1000 ? "\(mb / 1000) GB" : "\(mb) MB"
     }
 }
