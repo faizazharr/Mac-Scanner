@@ -6,8 +6,8 @@ cd "$(dirname "$0")/.."
 
 CONFIG="${1:-release}"
 if [ "$CONFIG" = "release" ]; then
-    echo "==> Compiling Universal 2 Binary (arm64 + x86_64) with size optimization..."
-    swift build -c release --arch arm64 --arch x86_64 -Xswiftc -Osize -Xswiftc -whole-module-optimization
+    echo "==> Compiling Universal 2 Binary (arm64 + x86_64) with size optimization & dead-strip..."
+    swift build -c release --arch arm64 --arch x86_64 -Xswiftc -Osize -Xswiftc -whole-module-optimization -Xlinker -dead_strip
     BIN_PATH=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/MacScanner
 else
     swift build -c "$CONFIG"
