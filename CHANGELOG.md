@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.2.0 — Background Services Monitor, UI Redesign & Efficiency Optimizations
+
+Major feature release introducing real-time background service tracking, dynamic application bundle detection, App Uninstaller UI redesign, memory leak prevention, and single-instance window lifecycle management.
+
+### Features & Enhancements
+
+- **Background Services Monitor Tab**:
+  - Live inspection of all macOS Launch Agents (`~/Library/LaunchAgents`, `/Library/LaunchAgents`), Launch Daemons (`/Library/LaunchDaemons`, `/System/Library/LaunchDaemons`), and active XPC services.
+  - Real-time CPU and RAM resource metrics per service with traffic-light load risk indicators.
+  - Multi-category filter toolbar: *All*, *Third-Party*, *Running*, and *Heavy Load (>5% CPU)*.
+  - Dynamic App Owner Resolution: Inspects binary paths inside service plists, traverses parent `.app` bundles, reads `CFBundleDisplayName` / `CFBundleName`, and extracts native bundle icons dynamically with zero hardcoded lists.
+  - Quick-action Finder button to inspect service plist files in Finder.
+  - Lifecycle-aware 30-second polling that suspends automatically when navigating away to conserve CPU cycles.
+
+- **App Uninstaller UI Redesign**:
+  - Structured 3-section inspector pane: application header card with rounded icon and system badge, selection summary bar with *Total Size* and *Selected for Trash* stat blocks, and an animated leftover components list.
+  - Smooth animated row highlights with category badges and instant path reveal buttons.
+
+- **System & Memory Optimizations**:
+  - Bounded `AppIconCache` utilizing `NSCache` with a 25 MB memory limit to prevent unbounded memory growth.
+  - Adaptive polling for system telemetry: throttles from 3.5s on AC power to 7.0s on battery.
+  - Full memory leak prevention audit: added explicit teardown in `deinit` for `AVAudioEngine`, `AVAudioRecorder`, keyboard `NSEvent` monitors, and background `Timer` instances.
+  - Dead-code and symbol stripping enabled with `-Xlinker -dead_strip` and `-Osize` whole-module optimization.
+
+- **Window Lifecycle & Multi-Instance Fixes**:
+  - Replaced SwiftUI `WindowGroup` with single-instance `Window` lifecycle to eliminate duplicate window spawning.
+  - Auto-dismisses status bar popover panels upon activating the main application window.
+
+- **Hardware Classification**:
+  - Added support and categorization for fanless Apple Silicon hardware profiles including MacBook Neo.
+
 ## v1.1.0 — Professional Display & Monitor Diagnostics Suite
 
 Comprehensive monitor testing suite with 7 display calibration and diagnostic modules:

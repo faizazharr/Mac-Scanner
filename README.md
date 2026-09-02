@@ -97,6 +97,13 @@
 
 ---
 
+### ⚙️ 8. Background Services & Daemon Monitor
+- **Live Background Service Discovery**: Comprehensive inventory of all active macOS **Launch Agents**, **Launch Daemons**, and **XPC Services**.
+- **Dynamic Application Owner Resolution**: Automatically inspects bundle binaries to resolve owner apps and native icons without hardcoded lists.
+- **Real-Time CPU & RAM Telemetry**: Pinpoint background hogs with risk indicators (*Running*, *Third-Party*, *High-Load*) and quick Finder plist inspection.
+
+---
+
 ## 💻 Supported Devices & Hardware Compatibility
 
 MacScanner is built with an **intelligent hardware-adaptive engine** that dynamically scales memory algorithms, thermal diagnostics, and interface densities for every Mac model:
