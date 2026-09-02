@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
   <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device%20(Zero%20Telemetry)-success?style=flat-square&logo=shield" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Installer%20Size-1.7%20MB%20DMG-purple?style=flat-square" alt="Lightweight">
+  <a href="https://saweria.co/izarakuro"><img src="https://img.shields.io/badge/Support-Saweria-orange?style=flat-square&logo=coffeescript&logoColor=white" alt="Support on Saweria"></a>
 </p>
 
 ---
@@ -174,6 +175,22 @@ We welcome open-source contributions! To ensure MacScanner remains lightweight, 
    - Format code cleanly and verify with `swiftlint`.
 
 For detailed developer workflows and release standards, see [**`CONTRIBUTING.md`**](CONTRIBUTING.md) and [**`RELEASING.md`**](RELEASING.md).
+
+---
+
+## ☕ Support & Donation (Donasi)
+
+MacScanner adalah proyek open-source yang sepenuhnya gratis, bebas iklan, dan bebas telemetri. Jika aplikasi ini membantu Anda merawat, membersihkan, atau memeriksa performa Mac Anda, Anda dapat memberikan apresiasi dan dukungan pengembangan lebih lanjut melalui:
+
+<p align="center">
+  <a href="https://saweria.co/izarakuro">
+    <img src="https://img.shields.io/badge/Donasi%20via-Saweria%20(Indonesia)-orange?style=for-the-badge&logo=coffeescript&logoColor=white" alt="Donasi via Saweria" height="42">
+  </a>
+</p>
+
+- 🇮🇩 **Donasi (Indonesia)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro) *(Mendukung QRIS, GoPay, OVO, DANA, LinkAja, ShopeePay)*
+
+Setiap donasi sangat berarti untuk membantu keberlanjutan pengembangan fitur, riset hardware Apple Silicon/Intel terbaru, dan pemeliharaan repository open-source ini. Terima kasih banyak atas dukungan Anda! 🙏
 
 ---
 

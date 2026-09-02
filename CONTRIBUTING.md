@@ -145,3 +145,11 @@ Before submitting a PR:
 5. Fill out the PR template completely with a clear description and screenshots/GIFs if modifying UI.
 
 Thank you for helping keep MacScanner fast, safe, and beautiful! 🍏✨
+
+---
+
+## ☕ Support the Project
+
+If you love MacScanner and want to support its open-source development and maintenance:
+- 🇮🇩 **Donasi (Indonesia)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro)
+
