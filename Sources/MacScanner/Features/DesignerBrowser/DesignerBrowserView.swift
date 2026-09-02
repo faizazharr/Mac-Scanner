@@ -32,6 +32,7 @@ struct DesignerBrowserView: View {
                     ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .frame(maxWidth: 420)
 
                 // Sub-view Content

@@ -103,6 +103,7 @@ struct ScreeningView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .frame(maxWidth: 300)
             }
 
@@ -329,6 +330,7 @@ struct ScreeningView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .frame(width: 260)
             }
 

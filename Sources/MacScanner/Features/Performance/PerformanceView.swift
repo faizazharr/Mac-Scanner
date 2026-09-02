@@ -656,6 +656,7 @@ struct PerformanceView: View {
                     ForEach(ProcessSort.allCases, id: \.self) { Text($0.rawValue) }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .frame(width: 140)
             }
 

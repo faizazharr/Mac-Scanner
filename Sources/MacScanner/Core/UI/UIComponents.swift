@@ -129,6 +129,7 @@ public struct FilterSegmentComponent<T: Hashable & RawRepresentable>: View where
             }
         }
         .pickerStyle(.segmented)
+        .labelsHidden()
         .frame(width: width)
     }
 }
