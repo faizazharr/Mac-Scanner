@@ -57,7 +57,8 @@ struct DeviceInfo: Sendable {
     /// Form factor and cooling profile
     var formFactor: DeviceFormFactor {
         let id = modelIdentifier.lowercased()
-        if id.contains("macbookair") {
+        let name = modelName.lowercased()
+        if id.contains("macbookair") || id.contains("neo") || name.contains("neo") || id == "macbook10,1" || id == "macbook9,1" || id == "macbook8,1" {
             return .fanlessLaptop
         } else if id.contains("macbook") {
             return .activeFanLaptop

@@ -104,6 +104,7 @@ MacScanner is built with an **intelligent hardware-adaptive engine** that dynami
 | Device Family | Models Supported | Cooling & Thermal Profile | Memory & Storage Scaling |
 |---|---|---|---|
 | **MacBook Air** | 13" & 15" (M1, M2, M3, Intel) | **Fanless Laptop** (Passive Aluminum Cooling) | Dynamic Swap `< 25% RAM`, Proactive Memory Optimization |
+| **MacBook Neo** | Compact & Ultra-Portable (Apple Silicon / Intel) | **Fanless Laptop** (Ultra-Low Power Passive Cooling) | Agile Memory Footprint & Battery Preservation |
 | **MacBook Pro** | 13", 14", 15", 16" (M1/M2/M3/M4 Pro & Max, Intel) | **Active Fan Laptop** (Dual Cooling Fans) | High Multitasking Headroom (16 GB – 128 GB+) |
 | **Mac mini** | All Generations (M1, M2, M2 Pro, Intel) | **Desktop Workstation** (Continuous AC Power) | Headroom-Aware Desktop Telemetry |
 | **Mac Studio** | All Generations (M1 Max/Ultra, M2 Max/Ultra) | **High Thermal Headroom** (Massive Heatsinks) | Workstation-Class Scaling (32 GB – 192 GB+) |
