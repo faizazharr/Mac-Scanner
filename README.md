@@ -2,6 +2,42 @@
 
 **MacScanner** is an ultra-fast, lightweight (1.7 MB binary), and privacy-first macOS utility designed to monitor disk health, clean application leftovers, analyze system performance, and run hardware diagnostics — all in one native app with 0% background overhead.
 
+<table>
+<tr>
+<td><img src="Resources/Screenshots/folder-browser.png" alt="Folder Browser"></td>
+<td><img src="Resources/Screenshots/recommendations.png" alt="Cleanup Recommendations"></td>
+</tr>
+<tr>
+<td><img src="Resources/Screenshots/performance.png" alt="Live Performance"></td>
+<td><img src="Resources/Screenshots/app-uninstaller.png" alt="App Uninstaller"></td>
+</tr>
+<tr>
+<td><img src="Resources/Screenshots/screen-time.png" alt="Screen Time & Usage"></td>
+<td><img src="Resources/Screenshots/hardware-test.png" alt="Hardware Diagnostics"></td>
+</tr>
+</table>
+
+---
+
+## 💻 Supported Devices & Hardware Compatibility
+
+MacScanner is built with an **intelligent hardware-adaptive engine** that dynamically scales memory algorithms, thermal diagnostics, and interface densities for every Mac model:
+
+| Device Family | Models Supported | Cooling & Thermal Profile | Memory & Storage Scaling |
+|---|---|---|---|
+| **MacBook Air** | 13" & 15" (M1, M2, M3, Intel) | **Fanless Laptop** (Passive Aluminum Cooling) | Dynamic Swap `< 25% RAM`, Proactive Memory Optimization |
+| **MacBook Pro** | 13", 14", 15", 16" (M1/M2/M3/M4 Pro & Max, Intel) | **Active Fan Laptop** (Dual Cooling Fans) | High Multitasking Headroom (16 GB – 128 GB+) |
+| **Mac mini** | All Generations (M1, M2, M2 Pro, Intel) | **Desktop Workstation** (Continuous AC Power) | Headroom-Aware Desktop Telemetry |
+| **Mac Studio** | All Generations (M1 Max/Ultra, M2 Max/Ultra) | **High Thermal Headroom** (Massive Heatsinks) | Workstation-Class Scaling (32 GB – 192 GB+) |
+| **iMac** | 24" (M1, M3, M4), 21.5" & 27" 4K/5K Retina (Intel) | **All-in-One Desktop** (Continuous AC Power) | Retina Display Calibration & Diagnostics |
+| **Mac Pro** | Tower & Rack (Apple Silicon Ultra, Intel Xeon) | **Workstation Server** (Full PCIe & NVMe APFS) | Heavy Dataset & Multi-TB Storage Profiles |
+
+### 📋 Minimum System Requirements:
+- **Operating System**: macOS 13.0 (Ventura), macOS 14.0 (Sonoma), macOS 15.0 (Sequoia), or later.
+- **Architecture**: Native Apple Silicon (`arm64`) & Intel 64-bit (`x86_64`) Universal Binary.
+- **Memory (RAM)**: 8 GB, 16 GB, 18 GB, 24 GB, 32 GB, 36 GB, 48 GB, 64 GB, 96 GB, 128 GB, 192 GB+.
+- **Storage**: 128 GB to 8 TB+ APFS SSDs.
+
 ---
 
 ## 🔒 Privacy & Zero-Data Collection Guarantee
