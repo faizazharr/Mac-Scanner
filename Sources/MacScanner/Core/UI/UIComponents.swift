@@ -133,3 +133,70 @@ public struct FilterSegmentComponent<T: Hashable & RawRepresentable>: View where
         .frame(width: width)
     }
 }
+
+// MARK: - Search Field Component
+
+public struct SearchField: View {
+    public let placeholder: String
+    @Binding public var text: String
+
+    public init(placeholder: String, text: Binding<String>) {
+        self.placeholder = placeholder
+        self._text = text
+    }
+
+    public var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.subheadline)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .glassCard()
+    }
+}
+
+// MARK: - Trash Confirmation Modifier
+
+public struct TrashConfirmation: ViewModifier {
+    @Binding public var pendingURL: URL?
+    public var onConfirm: (URL) -> Void
+
+    public init(pendingURL: Binding<URL?>, onConfirm: @escaping (URL) -> Void) {
+        self._pendingURL = pendingURL
+        self.onConfirm = onConfirm
+    }
+
+    public func body(content: Content) -> some View {
+        content.confirmationDialog(
+            "Move \"\(pendingURL?.lastPathComponent ?? "")\" to Trash?",
+            isPresented: Binding(
+                get: { pendingURL != nil },
+                set: { if !$0 { pendingURL = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Move to Trash", role: .destructive) {
+                if let url = pendingURL { onConfirm(url) }
+                pendingURL = nil
+            }
+            Button("Cancel", role: .cancel) { pendingURL = nil }
+        } message: {
+            Text("This is completely reversible — the item goes to macOS Trash and is not permanently deleted.")
+        }
+    }
+}
