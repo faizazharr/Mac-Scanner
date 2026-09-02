@@ -76,8 +76,9 @@ struct ScreeningView: View {
         let totalHours = chartData.reduce(0.0) { $0 + $1.estimatedDailyHours }
         let topApp = chartData.first?.name ?? "None"
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center) {
+        return VStack(alignment: .leading, spacing: 12) {
+            // Header Row: Title & Segmented Metric Control
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Image(systemName: "chart.bar.fill")
@@ -86,49 +87,58 @@ struct ScreeningView: View {
                         Text("Usage Statistics Chart")
                             .font(.subheadline)
                             .fontWeight(.bold)
+                            .lineLimit(1)
                     }
                     Text("Visual comparison of screen duration, power impact, and disk footprint.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
+
+                Spacer(minLength: 12)
+
+                Picker("Metric", selection: $chartMetric) {
+                    ForEach(ChartMetric.allCases, id: \.self) { m in
+                        Text(m.rawValue).tag(m)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 300)
+            }
+
+            // Summary Badges Row (Prevents vertical character wrapping on resize)
+            HStack(spacing: 8) {
+                HStack(spacing: 4) {
+                    Text("🏆 Top App:")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Text(topApp)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.purple)
+                }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.purple.opacity(0.12))
+                .clipShape(Capsule())
+
+                HStack(spacing: 4) {
+                    Text("⏱️ Total:")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Text(String(format: "%.1fh", totalHours))
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.blue)
+                }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.blue.opacity(0.12))
+                .clipShape(Capsule())
 
                 Spacer()
-
-                HStack(spacing: 8) {
-                    HStack(spacing: 4) {
-                        Text("🏆 Top App:")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                        Text(topApp)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.purple)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.purple.opacity(0.12))
-                    .clipShape(Capsule())
-
-                    HStack(spacing: 4) {
-                        Text("⏱️ Total:")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                        Text(String(format: "%.1fh", totalHours))
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.blue)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.blue.opacity(0.12))
-                    .clipShape(Capsule())
-
-                    Picker("Metric", selection: $chartMetric) {
-                        ForEach(ChartMetric.allCases, id: \.self) { m in
-                            Text(m.rawValue).tag(m)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 280)
-                }
             }
 
             Chart {
@@ -230,7 +240,7 @@ struct ScreeningView: View {
     }
 
     private func topMetricsGrid(_ overview: MacScreeningOverview) -> some View {
-        HStack(spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
             MetricTileComponent(
                 title: "System Uptime",
                 value: formatUptime(overview.totalUptimeSeconds),

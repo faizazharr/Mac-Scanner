@@ -18,14 +18,10 @@ struct DeviceTestingView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
 
-                // Top Grid: Screen & Speaker
-                HStack(alignment: .top, spacing: 16) {
+                // Diagnostics Cards Grid (Adaptive 1 or 2 columns based on window width)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 16)], spacing: 16) {
                     screenTestCard
                     speakerTestCard
-                }
-
-                // Middle Grid: Microphone & Trackpad
-                HStack(alignment: .top, spacing: 16) {
                     micTestCard
                     trackpadTestCard
                 }

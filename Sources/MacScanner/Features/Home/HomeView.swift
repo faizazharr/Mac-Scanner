@@ -107,7 +107,7 @@ struct HomeView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "lock.shield.fill")
-                        Text("Buka Full Disk Access")
+                        Text("Grant Full Disk Access")
                     }
                     .font(.caption)
                     .fontWeight(.semibold)
@@ -202,7 +202,7 @@ struct HomeView: View {
     }
 
     private var navigationGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14)], spacing: 14) {
             NavCard(
                 title: "Designer & Browsers",
                 subtitle: "Plain-language Mac slowdown diagnostics, Figma/Adobe caches, and browser extension bloat.",

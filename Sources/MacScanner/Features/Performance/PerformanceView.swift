@@ -139,7 +139,7 @@ struct PerformanceView: View {
     // MARK: - Gauges Row
 
     private func gaugesRow(_ snapshot: PerformanceMonitor.Snapshot) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 10)], spacing: 10) {
             GaugeCard(
                 title: "Memory", icon: "memorychip.fill",
                 valueLabel: "\(Int(snapshot.memory.usedFraction * 100))%",
@@ -192,7 +192,7 @@ struct PerformanceView: View {
                         Text("Root-Cause Deep Dive: \(app.appName)")
                             .font(.headline)
                             .fontWeight(.bold)
-                        Pill(text: "Sedang Diperiksa", color: app.color)
+                        Pill(text: "Inspecting", color: app.color)
                     }
                     Text(app.rootCauseSummary)
                         .font(.caption)

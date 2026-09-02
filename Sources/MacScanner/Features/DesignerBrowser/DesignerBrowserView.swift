@@ -130,7 +130,7 @@ struct DesignerBrowserView: View {
     // MARK: - Metrics Hub
 
     private var metricsHub: some View {
-        HStack(spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 12)], spacing: 12) {
             metricCard(
                 title: "Design Apps Cache",
                 value: ByteFormat.string(vm.totalDesignCacheBytes),

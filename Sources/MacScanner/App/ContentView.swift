@@ -904,8 +904,9 @@ struct LargeFilesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header Controls: Scope, Threshold & Scan Action
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                // Top Row: Scope, Thresholds & Actions
+                HStack(spacing: 10) {
                     // Scope Picker
                     Menu {
                         ForEach(LargeFilesViewModel.ScanScope.allCases) { scope in
@@ -928,6 +929,7 @@ struct LargeFilesView: View {
                             Text(vm.scanScope == .custom && vm.customScopeURL != nil ? vm.customScopeURL!.lastPathComponent : vm.scanScope.rawValue)
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
+                                .lineLimit(1)
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundStyle(.secondary)
@@ -937,40 +939,46 @@ struct LargeFilesView: View {
                         .glassCard()
                     }
                     .menuStyle(.borderlessButton)
-                    .frame(width: 170)
+                    .fixedSize()
 
                     Divider().frame(height: 18)
 
-                    // Size Threshold Presets
+                    // Size Threshold Presets in a scrollable horizontal container
                     Text("Threshold:")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .fixedSize()
 
-                    HStack(spacing: 6) {
-                        ForEach(sizePresets, id: \.self) { mb in
-                            Button {
-                                vm.minMB = mb
-                                vm.send(.rescan)
-                            } label: {
-                                Text(mb >= 1000 ? "\(mb / 1000) GB" : "\(mb) MB")
-                                    .font(.caption2)
-                                    .fontWeight(vm.minMB == mb ? .bold : .medium)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(vm.minMB == mb ? Color.purple.opacity(0.2) : Color.secondary.opacity(0.08))
-                                    .foregroundStyle(vm.minMB == mb ? Color.purple : Color.primary)
-                                    .clipShape(Capsule())
-                                    .overlay(
-                                        Capsule()
-                                            .strokeBorder(vm.minMB == mb ? Color.purple.opacity(0.4) : Color.clear, lineWidth: 1)
-                                    )
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(sizePresets, id: \.self) { mb in
+                                Button {
+                                    vm.minMB = mb
+                                    vm.send(.rescan)
+                                } label: {
+                                    Text(mb >= 1000 ? "\(mb / 1000) GB" : "\(mb) MB")
+                                        .font(.caption2)
+                                        .fontWeight(vm.minMB == mb ? .bold : .medium)
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(vm.minMB == mb ? Color.purple.opacity(0.2) : Color.secondary.opacity(0.08))
+                                        .foregroundStyle(vm.minMB == mb ? Color.purple : Color.primary)
+                                        .clipShape(Capsule())
+                                        .overlay(
+                                            Capsule()
+                                                .strokeBorder(vm.minMB == mb ? Color.purple.opacity(0.4) : Color.clear, lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
 
-                    Spacer()
+                    Spacer(minLength: 8)
 
                     // Sort Picker
                     Picker("Sort", selection: $vm.sortOption) {
@@ -980,7 +988,7 @@ struct LargeFilesView: View {
                     }
                     .pickerStyle(.menu)
                     .controlSize(.small)
-                    .frame(width: 155)
+                    .frame(width: 145)
 
                     // Scan / Refresh Button
                     Button {
@@ -996,12 +1004,14 @@ struct LargeFilesView: View {
                             Text(vm.isScanning ? "Scanning…" : "Scan Now")
                                 .font(.caption)
                                 .fontWeight(.semibold)
+                                .lineLimit(1)
                         }
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.purple)
                     .controlSize(.small)
                     .disabled(vm.isScanning)
+                    .fixedSize()
                 }
 
                 // Filter & Search Row
@@ -1017,8 +1027,12 @@ struct LargeFilesView: View {
                                 } label: {
                                     HStack(spacing: 4) {
                                         Image(systemName: cat.icon).font(.caption2)
-                                        Text(cat.rawValue).font(.caption)
+                                        Text(cat.rawValue)
+                                            .font(.caption)
+                                            .lineLimit(1)
                                     }
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
                                     .padding(.horizontal, 9)
                                     .padding(.vertical, 5)
                                     .background(
