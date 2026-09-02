@@ -163,4 +163,10 @@ final class AudioDiagnosticEngine: ObservableObject {
         isPlayingAudio = false
         currentlyTestingSpeaker = nil
     }
+
+    deinit {
+        audioStopTimer?.invalidate()
+        playerNode?.stop()
+        audioEngine?.stop()
+    }
 }

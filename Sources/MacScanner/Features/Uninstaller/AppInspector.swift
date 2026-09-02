@@ -202,6 +202,9 @@ enum AppInspector {
         if let cached = diskSizeCache[path], now.timeIntervalSince(cached.timestamp) < 60.0 {
             return cached.size
         }
+        if diskSizeCache.count > 200 {
+            diskSizeCache.removeAll(keepingCapacity: true)
+        }
         let size = DiskScanner.size(of: url)
         diskSizeCache[path] = (size, now)
         return size

@@ -363,4 +363,10 @@ final class DeviceTestingEngine: ObservableObject {
     func triggerHapticFeedback(pattern: NSHapticFeedbackManager.FeedbackPattern = .generic) {
         NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     }
+
+    deinit {
+        if let monitor = keyEventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
 }

@@ -105,4 +105,10 @@ final class MicrophoneDiagnosticEngine: ObservableObject {
         isPlayingLoopback = false
         micAudioLevel = 0.0
     }
+
+    deinit {
+        micLevelTimer?.invalidate()
+        micRecorder?.stop()
+        loopbackPlayer?.stop()
+    }
 }

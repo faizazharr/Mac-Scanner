@@ -220,4 +220,8 @@ final class PerformanceViewModel: ObservableObject {
         timer?.invalidate()
         timer = nil
     }
+
+    deinit {
+        timer?.invalidate()
+    }
 }
