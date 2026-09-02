@@ -72,7 +72,10 @@ struct ProcessStats: Identifiable {
     }
 
     var isKnownHeavy: Bool { HeavyAppCatalog.matches(fullCommand) }
-    var isResourceHeavy: Bool { cpuPercent >= 40 || memoryBytes >= 1_500_000_000 }
+    var isResourceHeavy: Bool {
+        let threshold = max(1_000_000_000, Int64(Double(ProcessInfo.processInfo.physicalMemory) * 0.10))
+        return cpuPercent >= 40 || memoryBytes >= threshold
+    }
 }
 
 /// Curated list of apps known to run sustained CPU/GPU/RAM loads.
@@ -164,10 +167,12 @@ enum PerformanceMonitor {
         }
 
         var swapRisk: LoadRisk {
-            switch swap.usedBytes {
-            case ..<3_000_000_000: return .ok        // < 3 GB is completely normal macOS paging
-            case ..<10_000_000_000: return .warning   // 3–10 GB is moderate swap
-            default: return .critical                 // 10 GB+ is heavy swap
+            let totalRAM = max(Int64(memory.totalBytes), 8_000_000_000)
+            let swapRatio = Double(swap.usedBytes) / Double(totalRAM)
+            switch swapRatio {
+            case ..<0.25: return .ok        // Swap is < 25% of this Mac's RAM (e.g. < 2GB on 8GB Mac, < 4GB on 16GB, < 8GB on 32GB)
+            case ..<0.60: return .warning   // Swap is 25%–60% of this Mac's RAM
+            default: return .critical       // Swap exceeds 60% of physical RAM
             }
         }
 
@@ -190,7 +195,7 @@ enum PerformanceMonitor {
         }
 
         /// Balanced, non-alarmist system health rating.
-        /// Does NOT jump to .critical simply because background swap exists.
+        /// Proportional to each Mac's hardware capacity.
         var overallRisk: LoadRisk {
             if thermalRisk == .critical {
                 return .critical // True hardware thermal throttling
@@ -230,11 +235,13 @@ enum PerformanceMonitor {
             topProcessesByMemory.first { !$0.isSystemDaemon } ?? topProcesses.max { $0.memoryBytes < $1.memoryBytes }
         }
 
-        private static let notableMemoryThreshold: Int64 = 500_000_000 // 500 MB
+        var notableMemoryThreshold: Int64 {
+            max(500_000_000, Int64(Double(memory.totalBytes) * 0.08)) // 8% of this Mac's RAM or 500MB
+        }
 
         var memoryAdvice: String? {
             guard memoryRisk >= .warning else { return nil }
-            if let heaviest = heaviestByMemory, heaviest.memoryBytes >= Self.notableMemoryThreshold {
+            if let heaviest = heaviestByMemory, heaviest.memoryBytes >= notableMemoryThreshold {
                 return "\(heaviest.canonicalAppName) is using \(ByteFormat.string(heaviest.memoryBytes)) RAM. Quitting unused apps will free up physical memory."
             }
             return "Close unused applications or heavy browser tabs to relieve memory pressure."
@@ -259,7 +266,7 @@ enum PerformanceMonitor {
                     return "macOS is paging \(ByteFormat.string(swap.usedBytes)) inactive data to SSD. Your Mac is safe. Closing \(heavyNames.joined(separator: ", ")) will free up physical RAM."
                 }
             }
-            if let heaviest = heaviestByMemory, !heaviest.isSystemDaemon, heaviest.memoryBytes >= Self.notableMemoryThreshold {
+            if let heaviest = heaviestByMemory, !heaviest.isSystemDaemon, heaviest.memoryBytes >= notableMemoryThreshold {
                 return "macOS is paging \(ByteFormat.string(swap.usedBytes)) to SSD. Quitting \(heaviest.canonicalAppName) (\(ByteFormat.string(heaviest.memoryBytes))) will free up physical RAM."
             }
             return "macOS is paging inactive data to SSD. Close inactive apps if you experience responsiveness lag."
