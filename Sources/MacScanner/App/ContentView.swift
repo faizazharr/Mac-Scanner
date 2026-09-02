@@ -13,6 +13,7 @@ enum ScreenerTab: String, CaseIterable, Identifiable {
     case largeFiles = "Large Files"
     case performance = "Performance"
     case appUninstaller = "App Uninstaller"
+    case backgroundServices = "Background Services"
     case screening = "Screen Time & Usage"
     case deviceTesting = "Hardware Test"
 
@@ -27,6 +28,7 @@ enum ScreenerTab: String, CaseIterable, Identifiable {
         case .largeFiles: return "doc.badge.gearshape.fill"
         case .performance: return "gauge.with.dots.needle.67percent"
         case .appUninstaller: return "trash.circle.fill"
+        case .backgroundServices: return "gearshape.2.fill"
         case .screening: return "hourglass.bottomhalf.filled"
         case .deviceTesting: return "wrench.and.screwdriver.fill"
         }
@@ -41,6 +43,7 @@ enum ScreenerTab: String, CaseIterable, Identifiable {
         case .largeFiles: return .purple
         case .performance: return .orange
         case .appUninstaller: return .indigo
+        case .backgroundServices: return .mint
         case .screening: return .purple
         case .deviceTesting: return .teal
         }
@@ -57,6 +60,7 @@ struct ContentView: View {
     @StateObject private var designerBrowserVM = DesignerBrowserViewModel()
     @StateObject private var recommendationsVM = RecommendationsViewModel()
     @StateObject private var deviceTestingEngine = DeviceTestingEngine()
+    @StateObject private var backgroundServicesVM = BackgroundServicesViewModel()
 
     init(deviceVM: DeviceInfoViewModel, performanceVM: PerformanceViewModel) {
         self.deviceVM = deviceVM
@@ -95,6 +99,12 @@ struct ContentView: View {
             }
             if oldValue == .performance {
                 performanceVM.send(.disappear)
+            }
+            if newValue == .backgroundServices {
+                backgroundServicesVM.appear()
+            }
+            if oldValue == .backgroundServices {
+                backgroundServicesVM.disappear()
             }
         }
     }
@@ -201,6 +211,8 @@ struct ContentView: View {
             PerformanceView(vm: performanceVM, deviceVM: deviceVM)
         case .appUninstaller:
             AppUninstallerView()
+        case .backgroundServices:
+            BackgroundServicesView(vm: backgroundServicesVM)
         case .screening:
             ScreeningView(deviceVM: deviceVM)
         case .deviceTesting:

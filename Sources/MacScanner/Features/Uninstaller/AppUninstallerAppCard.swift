@@ -5,6 +5,9 @@ import SwiftUI
 import AppKit
 
 /// Detailed inspector pane for an installed application and its associated leftover files.
+///
+/// Displays the app icon, metadata, a selection summary bar, and a lazy
+/// list of leftover file components with per-item toggle, size badge, and reveal action.
 struct AppUninstallerAppCard: View {
     let app: InstalledAppInfo
     let isDeleting: Bool
@@ -14,186 +17,261 @@ struct AppUninstallerAppCard: View {
     let onRevealBundle: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header Bar
-            HStack(spacing: 16) {
-                Image(nsImage: app.icon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 52, height: 52)
-                    .shadow(radius: 2)
+        VStack(alignment: .leading, spacing: 0) {
+            appHeaderBar
+            selectionSummaryBar
+            fileListSection
+        }
+        .padding(16)
+    }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(app.name)
-                            .font(.title2)
-                            .fontWeight(.bold)
+    // MARK: - App Header
 
-                        if app.isSystemApp {
-                            Pill(text: "System Protected", color: .orange)
-                        }
-                    }
+    private var appHeaderBar: some View {
+        HStack(spacing: 14) {
+            Image(nsImage: app.icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .shadow(color: .black.opacity(0.18), radius: 4, x: 0, y: 2)
 
-                    Text("Bundle ID: \(app.bundleID) • Version: \(app.version)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text(app.bundleURL.path)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text(app.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
                         .lineLimit(1)
-                        .truncationMode(.middle)
+
+                    if app.isSystemApp {
+                        Pill(text: "System", color: .orange)
+                    }
                 }
 
-                Spacer()
+                Text("Bundle ID: \(app.bundleID)  •  Version: \(app.version)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
 
-                Button(action: onUninstall) {
+                Text(app.bundleURL.path)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer()
+
+            Button(action: onUninstall) {
+                if isDeleting {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.mini).tint(.white)
+                        Text("Removing…")
+                    }
+                } else {
                     HStack(spacing: 6) {
                         Image(systemName: "trash.fill")
                         Text("Uninstall App")
                     }
-                    .fontWeight(.semibold)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-                .controlSize(.regular)
-                .disabled(app.selectedItemsCount == 0 || isDeleting)
             }
-            .padding(14)
-            .glassCard()
+            .buttonStyle(.borderedProminent)
+            .tint(.red)
+            .controlSize(.regular)
+            .fontWeight(.semibold)
+            .disabled(app.selectedItemsCount == 0 || isDeleting)
+        }
+        .padding(16)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.07), lineWidth: 1)
+        )
+        .padding(.bottom, 10)
+    }
 
-            // Selection Summary Bar
-            HStack(spacing: 20) {
-                HStack(spacing: 6) {
-                    Text("Total Size:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(ByteFormat.string(app.totalSizeBytes))
-                        .font(.caption.bold())
-                }
+    // MARK: - Selection Summary Bar
 
-                HStack(spacing: 6) {
-                    Text("Selected for Trash:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(ByteFormat.string(app.selectedSizeBytes)) (\(app.selectedItemsCount) items)")
-                        .font(.caption.bold())
-                        .foregroundStyle(.blue)
-                }
-
-                Spacer()
-
-                Button(action: onRevealBundle) {
-                    Label("Reveal App in Finder", systemImage: "arrow.up.forward.app")
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.blue)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .glassCard()
-
-            // Selection Control Toolbar
-            HStack {
-                Text("Root & Leftover Files Found (\(app.items.count) Components):")
+    private var selectionSummaryBar: some View {
+        HStack(spacing: 0) {
+            statBlock(
+                label: "Total Size",
+                value: ByteFormat.string(app.totalSizeBytes),
+                color: .primary
+            )
+            Divider().frame(height: 28).padding(.horizontal, 14).opacity(0.3)
+            statBlock(
+                label: "Selected for Trash",
+                value: "\(ByteFormat.string(app.selectedSizeBytes))  (\(app.selectedItemsCount) items)",
+                color: .blue
+            )
+            Spacer()
+            Button(action: onRevealBundle) {
+                Label("Reveal in Finder", systemImage: "arrow.up.forward.app")
                     .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button("Select All") { onSelectAll(true) }
-                    .buttonStyle(.plain)
-                    .font(.caption2)
-                    .foregroundStyle(.blue)
-
-                Text("•").foregroundStyle(.secondary)
-
-                Button("Deselect All") { onSelectAll(false) }
-                    .buttonStyle(.plain)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .fontWeight(.medium)
             }
-            .padding(.horizontal, 4)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .foregroundStyle(.blue)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.blue.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.blue.opacity(0.12), lineWidth: 1)
+        )
+        .padding(.bottom, 12)
+    }
+
+    private func statBlock(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.bold())
+                .foregroundStyle(color)
+        }
+    }
+
+    // MARK: - File List Section
+
+    private var fileListSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                HStack(spacing: 5) {
+                    Image(systemName: "list.bullet.clipboard")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("Leftover Components (\(app.items.count))")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Button("Select All") { onSelectAll(true) }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                    Text("·").foregroundStyle(.quaternary)
+                    Button("Deselect All") { onSelectAll(false) }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 2)
 
             if app.isScanning {
-                Spacer()
-                HStack {
-                    Spacer()
-                    ProgressView("Scanning Library & Sandbox directories…")
-                    Spacer()
-                }
-                Spacer()
+                scanningPlaceholder
             } else if app.items.isEmpty {
-                Spacer()
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.largeTitle)
-                        .foregroundStyle(.green)
-                    Text("No hidden leftover files found.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                Spacer()
+                cleanPlaceholder
             } else {
-                // File Items List
                 ScrollView {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         ForEach(app.items) { item in
-                            HStack(spacing: 12) {
-                                Toggle("", isOn: Binding(
-                                    get: { item.isSelected },
-                                    set: { _ in onToggleItem(item) }
-                                ))
-                                .toggleStyle(.checkbox)
-                                .labelsHidden()
-
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                        .fill(item.category.color.opacity(0.15))
-                                        .frame(width: 28, height: 28)
-                                    Image(systemName: item.category.icon)
-                                        .font(.caption.bold())
-                                        .foregroundStyle(item.category.color)
-                                }
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    HStack(spacing: 6) {
-                                        Text(item.category.rawValue)
-                                            .font(.caption.bold())
-                                            .foregroundStyle(.primary)
-
-                                        Pill(text: item.formattedSize, color: item.category.color)
-                                    }
-
-                                    Text(item.url.path)
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                }
-
-                                Spacer()
-
-                                Button {
-                                    FileActions.reveal(item.url)
-                                } label: {
-                                    Image(systemName: "folder")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                                .help("Reveal in Finder")
-                            }
-                            .padding(10)
-                            .glassCard(tint: item.isSelected ? .blue : .secondary, opacity: item.isSelected ? 0.08 : 0.03)
+                            leftoverItemRow(item)
                         }
                     }
                     .padding(.trailing, 4)
                 }
             }
         }
+    }
+
+    private func leftoverItemRow(_ item: AppLeftoverItem) -> some View {
+        HStack(spacing: 12) {
+            Toggle("", isOn: Binding(
+                get: { item.isSelected },
+                set: { _ in onToggleItem(item) }
+            ))
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(item.category.color.opacity(0.13))
+                    .frame(width: 32, height: 32)
+                Image(systemName: item.category.icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(item.category.color)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(item.category.rawValue)
+                        .font(.caption.bold())
+                    Pill(text: item.formattedSize, color: item.category.color)
+                }
+                Text(item.url.path)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer()
+
+            Button {
+                FileActions.reveal(item.url)
+            } label: {
+                Image(systemName: "folder.badge.magnifyingglass")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Reveal in Finder")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(item.isSelected ? Color.blue.opacity(0.07) : Color.primary.opacity(0.03))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    item.isSelected ? Color.blue.opacity(0.22) : Color.primary.opacity(0.06),
+                    lineWidth: 1
+                )
+        )
+        .animation(.easeInOut(duration: 0.15), value: item.isSelected)
+    }
+
+    // MARK: - Placeholders
+
+    private var scanningPlaceholder: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            ProgressView().controlSize(.large).tint(.blue)
+            Text("Scanning Library & Sandbox directories…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var cleanPlaceholder: some View {
+        VStack(spacing: 10) {
+            Spacer()
+            Image(systemName: "checkmark.seal.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.green)
+            Text("No leftover files found")
+                .font(.subheadline.bold())
+            Text("This application leaves no detectable traces in Library folders.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 300)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
     }
 }
