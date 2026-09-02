@@ -119,10 +119,9 @@ MacScanner is built with an **intelligent hardware-adaptive engine** that dynami
 | **Mac Pro** | Tower & Rack (Apple Silicon Ultra, Intel Xeon) | **Workstation Server** (Full PCIe & NVMe APFS) | Heavy Dataset & Multi-TB Storage Profiles |
 
 ### 📋 Minimum System Requirements:
-- **Operating System**: macOS 13.0 (Ventura), macOS 14.0 (Sonoma), macOS 15.0 (Sequoia), or later.
+- **Operating System**: macOS 14.0 (Sonoma) or later.
 - **Architecture**: Native Apple Silicon (`arm64`) & Intel 64-bit (`x86_64`) Universal Binary.
-- **Memory (RAM)**: 8 GB, 16 GB, 18 GB, 24 GB, 32 GB, 36 GB, 48 GB, 64 GB, 96 GB, 128 GB, 192 GB+.
-- **Storage**: 128 GB to 8 TB+ APFS SSDs.
+- **Memory & Storage**: No meaningful minimum — MacScanner is a ~1.7 MB binary using well under 200 MB RAM. If your Mac meets the OS requirement above, it meets this one.
 
 ---
 
