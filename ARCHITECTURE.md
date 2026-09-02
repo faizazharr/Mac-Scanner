@@ -6,14 +6,14 @@ Technical documentation for building, understanding, and contributing to **MacSc
 
 ## 🚀 Building & Packaging
 
-MacScanner is a native Swift Package Manager project, packaged into a double-clickable `.app` bundle and a compressed `.dmg` installer:
+MacScanner is a native Swift Package Manager project, packaged as a Universal 2 (`arm64` + `x86_64`) double-clickable `.app` bundle and a compressed `.dmg` installer:
 
 ```bash
-# Build MacScanner.app
-./Scripts/build_app.sh
+# Build MacScanner.app (Universal 2 Binary for Apple Silicon & Intel)
+./Scripts/build_app.sh release
 
 # Build and sign MacScanner.dmg installer disk image
-./Scripts/build_dmgQ.sh release
+./Scripts/build_dmg.sh release
 
 # Run the app
 open build/MacScanner.app

@@ -55,7 +55,7 @@ The maintainer and all community members contributing to **MacScanner** **must s
 Every engine and view model in MacScanner strictly follows **SOLID Principles** and **Single-Event Driven (UDF)** patterns:
 
 1. **Dependency Inversion (DIP)**:
-   - All data sources, scanners, and shell query providers must conform to segregated protocols in [`Sources/MacScanner/ServiceProtocols.swift`](Sources/MacScanner/ServiceProtocols.swift).
+   - All data sources, scanners, and shell query providers must conform to segregated protocols in [`Sources/MacScanner/Core/Protocols/ServiceProtocols.swift`](Sources/MacScanner/Core/Protocols/ServiceProtocols.swift).
    - Inject services into ViewModels via constructor: `init(service: any MyServiceProtocol = DefaultMyService())`.
 2. **Single-Event Driven (UDF)**:
    - State flows unidirectionally via `send(_ action:)`.
@@ -94,14 +94,14 @@ final class ExampleViewModel: ObservableObject {
 ```
 
 3. **Modular Object-Oriented UI Components**:
-   - Use reusable components from [`Sources/MacScanner/UIComponents.swift`](Sources/MacScanner/UIComponents.swift) (`MetricTileComponent`, `SectionHeaderComponent`, `FilterSegmentComponent`) instead of rewriting custom tile styling.
+   - Use reusable components from [`Sources/MacScanner/Core/UI/UIComponents.swift`](Sources/MacScanner/Core/UI/UIComponents.swift) (`MetricTileComponent`, `SectionHeaderComponent`, `FilterSegmentComponent`) instead of rewriting custom tile styling.
 
 ---
 
 ## ⌨️ 4. Hardware Testing & Diagnostic Rules
 
-When adding or modifying hardware testing modules ([`DeviceTestingEngine.swift`](Sources/MacScanner/DeviceTestingEngine.swift)):
-- **No Trapping Screens**: Fullscreen windows must subclass `NSWindow` with `canBecomeKey: true` and intercept `ESC` and close buttons immediately.
+When adding or modifying hardware testing modules ([`DeviceTestingEngine.swift`](Sources/MacScanner/Features/HardwareDiagnostics/DeviceTestingEngine.swift)):
+- **No Trapping Screens**: Fullscreen diagnostic views are embedded in root view hierarchies with clear `[ESC]` dismissals.
 - **Safe Audio Teardown**: Never stop audio engines synchronously inside render completion blocks (prevents deadlock).
 - **Shortcut Interception**: Keystroke testing must safely intercept combinations (`Cmd+Q`, `Cmd+W`, `Tab`) without quitting the application or triggering system actions.
 
