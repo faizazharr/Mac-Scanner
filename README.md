@@ -1,21 +1,96 @@
 # MacScanner ⚡
 
-**MacScanner** is an ultra-fast, lightweight (1.7 MB binary), and privacy-first macOS utility designed to monitor disk health, clean application leftovers, analyze system performance, and run hardware diagnostics — all in one native app with 0% background overhead.
+<p align="center">
+  <strong>Native, Privacy-First System Screener & Hardware Diagnostics for macOS</strong><br>
+  <em>Lightweight (1.7 MB DMG), Universal 2 Binary (Apple Silicon + Intel), and 0% Background Overhead.</em>
+</p>
 
-<table>
-<tr>
-<td><img src="Resources/Screenshots/folder-browser.png" alt="Folder Browser"></td>
-<td><img src="Resources/Screenshots/recommendations.png" alt="Cleanup Recommendations"></td>
-</tr>
-<tr>
-<td><img src="Resources/Screenshots/performance.png" alt="Live Performance"></td>
-<td><img src="Resources/Screenshots/app-uninstaller.png" alt="App Uninstaller"></td>
-</tr>
-<tr>
-<td><img src="Resources/Screenshots/screen-time.png" alt="Screen Time & Usage"></td>
-<td><img src="Resources/Screenshots/hardware-test.png" alt="Hardware Diagnostics"></td>
-</tr>
-</table>
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13.0%2B%20(Ventura%20|%20Sonoma%20|%20Sequoia)-black?style=flat-square&logo=apple" alt="macOS Version">
+  <img src="https://img.shields.io/badge/Architecture-Universal%202%20(arm64%20+%20x86__64)-blue?style=flat-square" alt="Universal Architecture">
+  <img src="https://img.shields.io/badge/Language-100%25%20Swift%206%20/%20SwiftUI-orange?style=flat-square&logo=swift" alt="Swift 6">
+  <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device%20(Zero%20Telemetry)-success?style=flat-square&logo=shield" alt="Zero Telemetry">
+  <img src="https://img.shields.io/badge/Installer%20Size-1.7%20MB%20DMG-purple?style=flat-square" alt="Lightweight">
+</p>
+
+---
+
+## 🔒 Privacy & Zero-Data Collection Guarantee
+
+> [!IMPORTANT]
+> ### 🛡️ Official Developer Privacy Mandate
+> **The developer DOES NOT COLLECT, HARVEST, TRACK, TRANSMIT, OR STORE ANY PRIVATE INFORMATION OR TELEMETRY** from users who install this application, nor from community members contributing to this project.
+> - **100% On-Device Local Processing**: All disk analysis, leftover scans, memory/CPU/battery metrics, and hardware tests run strictly in local memory on your Mac.
+> - **Zero Telemetry & No Remote Servers**: MacScanner does not connect to any cloud backend, contains zero tracking SDKs, and never phones home. What happens on your Mac stays on your Mac.
+
+---
+
+## 🚀 Visual Product Tour & Feature Showcase
+
+### 🏠 1. System Health, Chipset & Hardware Topology
+![System Overview & Hardware](Resources/Screenshots/folder-browser.png)
+
+- **Instant Hardware Detection**: Identifies **Apple Silicon (M1/M2/M3/M4 Series)** and **Intel 64-bit Core/Xeon** processors with Performance vs. Efficiency core split.
+- **Hardware Peripherals Check**: Real-time status for **Wi-Fi 6E/6 Interface**, **Bluetooth Controller**, and **Built-in Speaker System**.
+- **Battery Health & Power Envelope**: Battery health percentage, cycle count, and condition (automatically switches to AC Power on Desktop Macs).
+- **APFS Storage Ring**: Instant glanceable storage gauge calculating used vs free space.
+
+---
+
+### ⚡ 2. Real-Time Performance & Root-Cause Inspector
+![Live Performance](Resources/Screenshots/performance.png)
+
+- **Zero-Footprint Telemetry**: Sub-millisecond Mach-kernel metrics for **RAM, CPU, GPU, Virtual Memory (Swap), and Thermal State** with 0.0% idle CPU overhead.
+- **Context-Aware Non-Alarmist Health Engine**: Proportional memory evaluations that avoid false alarms during normal background swap activity.
+- **Interactive Process Anatomy**: Click any running application to inspect worker threads, GPU renderers, and web caches with one-click actions for **Inspect**, **Clear Cache**, and **Force Quit**.
+
+---
+
+### 🧹 3. Smart Cleanup Recommendations
+![Cleanup Recommendations](Resources/Screenshots/recommendations.png)
+
+- **Developer & System Junk Cleanups**: One-click safe cleanup targets for **Xcode DerivedData**, **Docker VM data**, **iOS Simulator caches**, **User logs**, and **Trash**.
+- **100% Reversible Deletions**: Deletions strictly use the native macOS Trash (`FileManager.trashItem`).
+
+---
+
+### 🎨 4. Designer & Browser Bloat Screener
+![Designer & Browsers](Resources/Screenshots/designer-browsers.png)
+
+- **Tailored for Creators & Developers**: Identifies oversized cache footprints from **Figma, Adobe Creative Cloud (Photoshop, Illustrator, Premiere, After Effects), Sketch, Chrome, Safari, Brave, Arc, and Firefox**.
+- **Safe Cache Purging**: Removes stale assets without deleting user project files, artboards, or browser login sessions.
+
+---
+
+### 🗑️ 5. Deep Root App Uninstaller & Leftover Cleaner
+![App Uninstaller](Resources/Screenshots/app-uninstaller.png)
+
+- **Full Application Lifecycle Management**: Discovers all installed application bundles and uncovers hidden leftovers across `~/Library/Application Support`, `Caches`, `Containers`, `Group Containers`, `Logs`, and `LaunchAgents`.
+- **Instant Pre-Calculated Sizing**: Concurrently calculates disk footprints without locking the UI.
+- **Self-Uninstall Protection**: Built-in safeguards prevent accidental deletion of MacScanner itself.
+
+---
+
+### 🛠️ 6. Hardware Diagnostics & Display Test Suite
+![Hardware Diagnostics](Resources/Screenshots/hardware-test.png)
+
+- **7-Module Display Calibration Suite**:
+  1. **Defective Pixels**: Pure primaries and secondaries for dead/stuck pixel inspection.
+  2. **Luminance Uniformity**: 25%, 50%, 75%, 100% full-field luminance tests.
+  3. **10-Bit Color Gradients**: Continuous linear gradients to test color banding.
+  4. **Dynamic Range & Color Distances**: Near-black (1%–10%) and near-white (90%–99%) matrices.
+  5. **Sharpness & Typography**: Micro-line grids and multi-scale Retina typography.
+  6. **Gamma 2.2 Calibration**: Optical blending checkerboards and grayscale ramps.
+  7. **120Hz ProMotion Motion Response**: Animated high-framerate pursuit blocks.
+- **Peripherals Testing**: Independent stereo speaker L/R audio sweeps, microphone input meter, isolated keyboard matrix tester, and trackpad haptic canvas.
+
+---
+
+### ⏱️ 7. Screen Time & Digital Wellness Analytics
+![Screen Time & Usage](Resources/Screenshots/screen-time.png)
+
+- **App Screen Time Metrics**: Real-time tracking of active daily hours, system uptime, and launch frequency.
+- **Swift Charts Analytics**: Interactive chart visualizations comparing **Screen Time**, **Battery Impact**, and **Disk Space**.
 
 ---
 
@@ -40,55 +115,11 @@ MacScanner is built with an **intelligent hardware-adaptive engine** that dynami
 
 ---
 
-## 🔒 Privacy & Zero-Data Collection Guarantee
-
-> [!IMPORTANT]
-> ### 🛡️ Official Developer Privacy Mandate:
->
-> **The developer DOES NOT COLLECT, HARVEST, TRACK, TRANSMIT, OR STORE ANY PRIVATE INFORMATION OR TELEMETRY** from users who install this application, nor from community members contributing to this project.
-> - **100% On-Device Local Processing**: All disk analysis, leftover scans, memory/CPU/battery metrics, and hardware tests run strictly in local memory on your Mac.
-> - **Zero Telemetry & No Remote Servers**: MacScanner does not connect to any cloud backend, contains zero tracking SDKs, and never phones home. What happens on your Mac stays on your Mac.
-
----
-
-## 🚀 Key Features
-
-### 🏠 1. System Overview & Hardware Specs
-- Instant hardware detection: **Apple Silicon Chip (M-Series)**, CPU/GPU Cores, Unified Memory, and macOS Build.
-- **Hardware Peripherals Check**: Real-time status for **Wi-Fi 6E/6 Card Interface**, **Bluetooth Controller**, and **Built-in Speaker System**.
-- **Battery Health**: Maximum capacity percentage, cycle count, and condition (Normal/Service).
-
-### 🗑️ 2. Deep Root App Uninstaller
-- Scans installed `.app` bundles and uncovers **all hidden root leftovers** across `~/Library/Application Support`, `Caches`, `Containers`, `Group Containers`, `Logs`, and `LaunchAgents`.
-- **Automatic Instant Sizing**: Pre-calculates accurate disk space for all installed applications concurrently.
-- **Safe Trash Migration**: Uses native macOS Trash (`FileManager.trashItem`) so deletions remain 100% reversible.
-- **Self-Uninstall Protection**: Built-in safeguards prevent accidental deletion of MacScanner itself.
-
-### ⏱️ 3. Mac & App Screen Time Screening
-- Uptime tracking, estimated active daily screen hours, and battery cycle health.
-- **Interactive Statistics Charts**: Compare screen duration, battery impact percentage, and disk footprint using Apple Swift Charts with customizable filters (`[ Screen Time | Battery Impact | Disk Size ]`).
-
-### ⚡ 4. Live System Performance & Root-Cause Inspector
-- Real-time Mach-kernel telemetry for **Memory, CPU, GPU, Swap, and Thermal State** with 0% idle CPU footprint.
-- **Inline Root-Cause Deep Dive**: Click any process to inspect worker threads, browser extensions, and web cache without disruptive pop-up dialogs. Direct controls for **Force Quit**, **Clear Cache**, and **Activity Monitor**.
-
-### 🎨 5. Designer & Browser Bloat Screener
-- Tailored for designers and developers: Clean oversized caches from **Figma, Adobe Creative Cloud (Photoshop, Illustrator, Premiere, After Effects)**, and browsers (Chrome, Safari, Firefox, Edge, Arc) without deleting user drafts or login sessions.
-
-### 🛠️ 6. Hardware Diagnostics & Testing
-- **Screen Dead Pixel Tester**: Multi-color canvas with auto-hiding HUD and instant `ESC` exit.
-- **Stereo Speaker L/R Engine**: Test left and right stereo audio channels independently.
-- **Microphone Level Meter**: Real-time decibel input gauge.
-- **Keyboard & Shortcut Tester**: Full 100% isolated key-code testing.
-- **Trackpad Multi-Touch Test**: Physical click, haptic feedback, and multi-finger gesture canvas.
-
----
-
 ## 📦 Installation & Download
 
 **[⬇ Download Latest MacScanner.dmg](../../releases/latest)**
 
-1. Open `MacScanner.dmg`.
+1. Download and open **`MacScanner.dmg`**.
 2. Drag **MacScanner.app** into your **Applications** folder.
 3. Open the app and grant Full Disk Access when prompted for complete root cleaning capabilities.
 
