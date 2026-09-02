@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device%20(Zero%20Telemetry)-success?style=flat-square&logo=shield" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Installer%20Size-1.7%20MB%20DMG-purple?style=flat-square" alt="Lightweight">
   <a href="https://saweria.co/izarakuro"><img src="https://img.shields.io/badge/Support-Saweria-orange?style=flat-square&logo=coffeescript&logoColor=white" alt="Support on Saweria"></a>
+  <a href="https://ko-fi.com/izarakuro"><img src="https://img.shields.io/badge/Support-Ko--fi-red?style=flat-square&logo=kofi&logoColor=white" alt="Support on Ko-fi"></a>
 </p>
 
 ---
@@ -184,11 +185,16 @@ MacScanner adalah proyek open-source yang sepenuhnya gratis, bebas iklan, dan be
 
 <p align="center">
   <a href="https://saweria.co/izarakuro">
-    <img src="https://img.shields.io/badge/Donasi%20via-Saweria%20(Indonesia)-orange?style=for-the-badge&logo=coffeescript&logoColor=white" alt="Donasi via Saweria" height="42">
+    <img src="https://img.shields.io/badge/Donasi%20via-Saweria%20(Indonesia)-orange?style=for-the-badge&logo=coffeescript&logoColor=white" alt="Donasi via Saweria" height="40">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://ko-fi.com/izarakuro">
+    <img src="https://img.shields.io/badge/Donate%20via-Ko--fi%20(International)-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Donate via Ko-fi" height="40">
   </a>
 </p>
 
-- 🇮🇩 **Donasi (Indonesia)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro) *(Mendukung QRIS, GoPay, OVO, DANA, LinkAja, ShopeePay)*
+- 🇮🇩 **Donasi Lokal (Indonesia)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro) *(Mendukung QRIS, GoPay, OVO, DANA, LinkAja, ShopeePay)*
+- 🌍 **International Donation**: [**https://ko-fi.com/izarakuro**](https://ko-fi.com/izarakuro) *(Supports PayPal, Credit/Debit Cards, Apple Pay, Google Pay)*
 
 Setiap donasi sangat berarti untuk membantu keberlanjutan pengembangan fitur, riset hardware Apple Silicon/Intel terbaru, dan pemeliharaan repository open-source ini. Terima kasih banyak atas dukungan Anda! 🙏
 
