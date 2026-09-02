@@ -149,25 +149,25 @@ enum PerformanceMonitor {
 
         var memoryRisk: LoadRisk {
             switch memory.usedFraction {
-            case ..<0.75: return .ok
-            case ..<0.90: return .warning
+            case ..<0.82: return .ok
+            case ..<0.94: return .warning
             default: return .critical
             }
         }
 
         var cpuRisk: LoadRisk {
             switch cpuPercent {
-            case ..<60: return .ok
-            case ..<85: return .warning
+            case ..<70: return .ok
+            case ..<90: return .warning
             default: return .critical
             }
         }
 
         var swapRisk: LoadRisk {
             switch swap.usedBytes {
-            case ..<1_000_000_000: return .ok        // < 1 GB
-            case ..<4_000_000_000: return .warning    // 1–4 GB
-            default: return .critical                  // 4 GB+
+            case ..<3_000_000_000: return .ok        // < 3 GB is completely normal macOS paging
+            case ..<10_000_000_000: return .warning   // 3–10 GB is moderate swap
+            default: return .critical                 // 10 GB+ is heavy swap
             }
         }
 
@@ -183,14 +183,39 @@ enum PerformanceMonitor {
         var gpuRisk: LoadRisk {
             switch gpuPercent {
             case nil: return .ok
-            case .some(let value) where value < 70: return .ok
-            case .some(let value) where value < 90: return .warning
+            case .some(let value) where value < 75: return .ok
+            case .some(let value) where value < 92: return .warning
             default: return .critical
             }
         }
 
+        /// Balanced, non-alarmist system health rating.
+        /// Does NOT jump to .critical simply because background swap exists.
         var overallRisk: LoadRisk {
-            max(max(memoryRisk, cpuRisk), max(swapRisk, max(thermalRisk, gpuRisk)))
+            if thermalRisk == .critical {
+                return .critical // True hardware thermal throttling
+            }
+            if memoryRisk == .critical && swapRisk >= .warning {
+                return .critical // Severe physical RAM saturation
+            }
+            if cpuRisk == .critical && memoryRisk >= .warning {
+                return .critical // Dual CPU + RAM saturation
+            }
+            if memoryRisk == .warning || cpuRisk == .warning || swapRisk >= .warning || gpuRisk == .warning || thermalRisk == .warning {
+                return .warning
+            }
+            return .ok
+        }
+
+        var overallStatusLabel: String {
+            switch overallRisk {
+            case .ok:
+                return "Optimal"
+            case .warning:
+                return "Busy"
+            case .critical:
+                return thermalRisk == .critical ? "Throttled" : "Heavy Load"
+            }
         }
 
         var heavyAppsRunning: [ProcessStats] {
@@ -210,7 +235,7 @@ enum PerformanceMonitor {
         var memoryAdvice: String? {
             guard memoryRisk >= .warning else { return nil }
             if let heaviest = heaviestByMemory, heaviest.memoryBytes >= Self.notableMemoryThreshold {
-                return "\(heaviest.canonicalAppName) is consuming \(ByteFormat.string(heaviest.memoryBytes)) RAM. Quit it if not in use."
+                return "\(heaviest.canonicalAppName) is using \(ByteFormat.string(heaviest.memoryBytes)) RAM. Quitting unused apps will free up physical memory."
             }
             return "Close unused applications or heavy browser tabs to relieve memory pressure."
         }
@@ -218,9 +243,9 @@ enum PerformanceMonitor {
         var cpuAdvice: String? {
             guard cpuRisk >= .warning else { return nil }
             if let heaviest = heaviestProcess, heaviest.cpuPercent >= 20 {
-                return "\(heaviest.canonicalAppName) is taking \(Int(heaviest.cpuPercent))% CPU load. Consider pausing or quitting it."
+                return "\(heaviest.canonicalAppName) is taking \(Int(heaviest.cpuPercent))% CPU load. Normal during intensive tasks."
             }
-            return "High CPU utilization detected. Check Top Processes below to inspect heavy tasks."
+            return "Elevated CPU activity detected from active background tasks."
         }
 
         var swapAdvice: String? {
@@ -229,29 +254,29 @@ enum PerformanceMonitor {
             let heavyNames = Array(Set(nonSystemHeavy.map(\.canonicalAppName))).sorted()
             if !heavyNames.isEmpty {
                 if heavyNames.count == 1 {
-                    return "Mac is swapping to disk. Closing \(heavyNames[0]) (and its background tabs) will free up memory immediately."
+                    return "macOS is paging \(ByteFormat.string(swap.usedBytes)) inactive data to SSD. Your Mac is safe. Closing \(heavyNames[0]) will free up physical RAM."
                 } else {
-                    return "Mac is swapping to disk. Closing \(heavyNames.joined(separator: ", ")) will help restore peak speed."
+                    return "macOS is paging \(ByteFormat.string(swap.usedBytes)) inactive data to SSD. Your Mac is safe. Closing \(heavyNames.joined(separator: ", ")) will free up physical RAM."
                 }
             }
             if let heaviest = heaviestByMemory, !heaviest.isSystemDaemon, heaviest.memoryBytes >= Self.notableMemoryThreshold {
-                return "Mac is swapping to disk. Quitting \(heaviest.canonicalAppName) (\(ByteFormat.string(heaviest.memoryBytes))) will free up physical memory."
+                return "macOS is paging \(ByteFormat.string(swap.usedBytes)) to SSD. Quitting \(heaviest.canonicalAppName) (\(ByteFormat.string(heaviest.memoryBytes))) will free up physical RAM."
             }
-            return "Swap file under pressure. Close inactive apps to prevent disk I/O thrashing."
+            return "macOS is paging inactive data to SSD. Close inactive apps if you experience responsiveness lag."
         }
 
         var gpuAdvice: String? {
             guard gpuRisk >= .warning else { return nil }
-            return "GPU accelerator is busy. High load from rendering, video export, or graphics-heavy apps."
+            return "GPU accelerator is active with graphics, video, or rendering workloads."
         }
 
         var thermalAdvice: String? {
             guard thermalRisk >= .warning else { return nil }
             switch thermalState {
             case .critical:
-                return "Thermal throttling active. Let your Mac cool down and check that fan vents are unobstructed."
+                return "Thermal throttling active to protect hardware. Let your Mac cool down and ensure vents are unobstructed."
             default:
-                return "Elevated system temperature. Avoid launching new heavy jobs until temperature stabilizes."
+                return "Elevated temperature under current workload. Normal during compilation or exports."
             }
         }
 

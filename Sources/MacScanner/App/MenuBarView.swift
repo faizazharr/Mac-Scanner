@@ -46,6 +46,8 @@ struct MenuBarContentView: View {
     @ObservedObject var deviceVM: DeviceInfoViewModel
     @Environment(\.openWindow) private var openWindow
 
+    @State private var showStatusHelp = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header Bar
@@ -83,6 +85,9 @@ struct MenuBarContentView: View {
         }
         .padding(14)
         .frame(width: 320)
+        .popover(isPresented: $showStatusHelp) {
+            statusExplanationPopover
+        }
         .onAppear {
             vm.send(.appear)
             vm.send(.refreshNow)
@@ -116,10 +121,91 @@ struct MenuBarContentView: View {
             }
 
             if let snapshot = vm.snapshot {
-                Pill(
-                    text: snapshot.overallRisk == .ok ? "Optimal" : snapshot.overallRisk == .warning ? "Warning" : "Critical",
-                    color: color(for: snapshot.overallRisk)
+                Button {
+                    showStatusHelp.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Pill(
+                            text: snapshot.overallStatusLabel,
+                            color: color(for: snapshot.overallRisk)
+                        )
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Click to understand system status and memory safety")
+            }
+        }
+    }
+
+    private var statusExplanationPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.blue)
+                Text("Understanding Mac System Status")
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                statusRow(
+                    title: "Optimal (Green)",
+                    desc: "CPU, RAM, and temperature are running cool, light, and with peak responsiveness.",
+                    color: .green,
+                    icon: "checkmark.circle.fill"
                 )
+
+                statusRow(
+                    title: "Busy / Normal Load (Amber)",
+                    desc: "Background tasks, Docker, or open browser tabs are using memory. Your Mac is operating normally.",
+                    color: .orange,
+                    icon: "chart.bar.fill"
+                )
+
+                statusRow(
+                    title: "Heavy Load / Swap (Orange-Red)",
+                    desc: "macOS is using SSD virtual memory to keep apps open without quitting them. Your hardware is 100% safe. Close unused apps if you experience lag.",
+                    color: .red,
+                    icon: "arrow.left.arrow.right"
+                )
+            }
+
+            Divider().opacity(0.3)
+
+            HStack {
+                Spacer()
+                Button("Got it") {
+                    showStatusHelp = false
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .padding(14)
+        .frame(width: 280)
+    }
+
+    private func statusRow(title: String, desc: String, color: Color, icon: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption.bold())
+                .foregroundStyle(color)
+                .frame(width: 16)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(color)
+                Text(desc)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -225,17 +311,22 @@ struct MenuBarContentView: View {
     // MARK: - Smart Alert Card
 
     private func smartAlertCard(_ rec: PerformanceRecommendation) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.caption.bold())
-                .foregroundStyle(color(for: rec.risk))
-                .padding(.top, 1)
+        let isSwap = rec.title.contains("Swap")
+        let alertColor = isSwap ? Color.blue : color(for: rec.risk)
+        let alertIcon = isSwap ? "arrow.left.arrow.right" : "exclamationmark.triangle.fill"
+        let alertTitle = isSwap ? "Memory Swap Notice" : rec.title + " Notice"
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(rec.title + " Alert")
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: alertIcon)
+                .font(.caption.bold())
+                .foregroundStyle(alertColor)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(alertTitle)
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundStyle(color(for: rec.risk))
+                    .foregroundStyle(alertColor)
 
                 Text(rec.advice)
                     .font(.system(size: 11))
@@ -245,7 +336,7 @@ struct MenuBarContentView: View {
             Spacer(minLength: 0)
         }
         .padding(10)
-        .glassCard(tint: color(for: rec.risk), opacity: 0.14)
+        .glassCard(tint: alertColor, opacity: 0.12)
     }
 
     // MARK: - Heaviest Apps Section
