@@ -9,6 +9,7 @@
   <img src="https://img.shields.io/badge/macOS-13.0%2B%20(Ventura%20|%20Sonoma%20|%20Sequoia)-black?style=flat-square&logo=apple" alt="macOS Version">
   <img src="https://img.shields.io/badge/Architecture-Universal%202%20(arm64%20+%20x86__64)-blue?style=flat-square" alt="Universal Architecture">
   <img src="https://img.shields.io/badge/Language-100%25%20Swift%206%20/%20SwiftUI-orange?style=flat-square&logo=swift" alt="Swift 6">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
   <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device%20(Zero%20Telemetry)-success?style=flat-square&logo=shield" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Installer%20Size-1.7%20MB%20DMG-purple?style=flat-square" alt="Lightweight">
 </p>
@@ -115,13 +116,40 @@ MacScanner is built with an **intelligent hardware-adaptive engine** that dynami
 
 ---
 
-## 📦 Installation & Download
+## 📦 Installation & Quick Start
+
+### Option 1: Drag-and-Drop Installer (Recommended)
 
 **[⬇ Download Latest MacScanner.dmg](../../releases/latest)**
 
 1. Download and open **`MacScanner.dmg`**.
 2. Drag **MacScanner.app** into your **Applications** folder.
 3. Open the app and grant Full Disk Access when prompted for complete root cleaning capabilities.
+
+### Option 2: Build from Source (Developers)
+
+Prerequisites: macOS with Xcode 15+ or Command Line Tools installed.
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/faizazharr/Mac-Scanner.git
+cd Mac-Scanner
+
+# 2. Build Universal 2 Binary and package .app
+./Scripts/build_app.sh release
+
+# 3. Launch the app
+open build/MacScanner.app
+```
+
+---
+
+## 🗺️ Project Roadmap & Community
+
+We have an active development roadmap including Homebrew Cask distribution, CLI companion tools, and desktop widgets.
+- View upcoming milestones and vote on features in [**`ROADMAP.md`**](ROADMAP.md).
+- Join discussions or report bugs in [**GitHub Issues**](../../issues).
+- Our community follows the Contributor Covenant pledge in [**`CODE_OF_CONDUCT.md`**](CODE_OF_CONDUCT.md).
 
 ---
 
@@ -145,16 +173,12 @@ We welcome open-source contributions! To ensure MacScanner remains lightweight, 
    - Swift 6 strict concurrency compliance (`@MainActor` for UI, `Task.detached` for heavy I/O).
    - Format code cleanly and verify with `swiftlint`.
 
-For detailed developer workflows and setup instructions, see [**`CONTRIBUTING.md`**](CONTRIBUTING.md) and [**`RELEASING.md`**](RELEASING.md).
+For detailed developer workflows and release standards, see [**`CONTRIBUTING.md`**](CONTRIBUTING.md) and [**`RELEASING.md`**](RELEASING.md).
 
 ---
 
-## 🚀 Release & Semantic Versioning
+## 📄 License & Copyright
 
-For instructions on publishing releases via Git tags, see [**`RELEASING.md`**](RELEASING.md).
-
----
-
-## 📄 Copyright
+MacScanner is open-source software released under the **[MIT License](LICENSE)**.
 
 Copyright © 2026 **Faiz Azhar Ristya Nugraha**. All rights reserved.
