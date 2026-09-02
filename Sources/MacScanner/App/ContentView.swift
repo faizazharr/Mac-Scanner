@@ -493,7 +493,30 @@ struct BrowserView: View {
                 }
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
-            } else if !vm.isScanning {
+            } else if vm.isScanning {
+                VStack(spacing: 16) {
+                    Spacer()
+                    ZStack {
+                        Circle()
+                            .fill(Color.blue.opacity(0.12))
+                            .frame(width: 80, height: 80)
+                        ProgressView()
+                            .controlSize(.large)
+                            .tint(.blue)
+                    }
+                    VStack(spacing: 6) {
+                        Text("Analyzing Folder Contents…")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        Text("Computing directory sizes and calculating storage breakdowns…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
                 VStack(spacing: 12) {
                     Spacer()
                     Image(systemName: "magnifyingglass.circle")
@@ -505,8 +528,6 @@ struct BrowserView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-            } else {
-                Spacer()
             }
         }
         .modifier(TrashConfirmation(pendingURL: $pendingTrash) { url in
@@ -782,8 +803,31 @@ struct RecommendationsView: View {
                     }
                 }
                 .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-            } else if !vm.isScanning {
+            } else if vm.isScanning {
+                VStack(spacing: 16) {
+                    Spacer()
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.12))
+                            .frame(width: 80, height: 80)
+                        ProgressView()
+                            .controlSize(.large)
+                            .tint(.green)
+                    }
+                    VStack(spacing: 6) {
+                        Text("Scanning Cleanup Targets & Disk Junk…")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                        Text("Analyzing Xcode DerivedData, Docker VM storage, simulator runtime caches, user logs, and Trash…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 450)
+                    }
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
                 VStack(spacing: 12) {
                     Spacer()
                     Image(systemName: "checkmark.seal.fill")
@@ -797,8 +841,6 @@ struct RecommendationsView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-            } else {
-                Spacer()
             }
         }
         .modifier(TrashConfirmation(pendingURL: $pendingTrash) { url in

@@ -87,14 +87,28 @@ struct AppUninstallerView: View {
                 Divider().opacity(0.4)
 
                 if engine.isLoadingApps {
-                    Spacer()
-                    HStack {
+                    VStack(spacing: 16) {
                         Spacer()
-                        ProgressView("Scanning sizes & leftovers…")
-                            .font(.caption)
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.12))
+                                .frame(width: 70, height: 70)
+                            ProgressView()
+                                .controlSize(.large)
+                                .tint(.blue)
+                        }
+                        VStack(spacing: 6) {
+                            Text("Scanning Applications…")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                            Text("Discovering bundles, library leftovers, and sizes…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
                         Spacer()
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity)
                 } else {
                     List(filteredApps, selection: Binding(
                         get: { engine.selectedApp?.id },

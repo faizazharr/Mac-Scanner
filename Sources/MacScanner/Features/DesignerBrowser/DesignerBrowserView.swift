@@ -24,25 +24,53 @@ struct DesignerBrowserView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
 
-                // Top Metrics Hub
-                metricsHub
+                if vm.isScanning && vm.designCaches.isEmpty && vm.browsers.isEmpty {
+                    VStack(spacing: 16) {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(Color.pink.opacity(0.12))
+                                .frame(width: 80, height: 80)
+                            ProgressView()
+                                .controlSize(.large)
+                                .tint(.pink)
+                        }
+                        VStack(spacing: 6) {
+                            Text("Scanning Design Apps & Browser Footprints…")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                            Text("Inspecting Figma, Adobe Creative Cloud, Sketch, Chrome, Safari, Brave, and Arc caches & extensions…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: 450)
+                        }
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                    .glassCard()
+                } else {
+                    // Top Metrics Hub
+                    metricsHub
 
-                // Mode Selector
-                Picker("Mode", selection: $selectedMode) {
-                    ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(maxWidth: 420)
+                    // Mode Selector
+                    Picker("Mode", selection: $selectedMode) {
+                        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(maxWidth: 420)
 
-                // Sub-view Content
-                switch selectedMode {
-                case .overview:
-                    overviewSection
-                case .designCaches:
-                    designCachesSection
-                case .browsers:
-                    browsersSection
+                    // Sub-view Content
+                    switch selectedMode {
+                    case .overview:
+                        overviewSection
+                    case .designCaches:
+                        designCachesSection
+                    case .browsers:
+                        browsersSection
+                    }
                 }
             }
             .padding(20)
