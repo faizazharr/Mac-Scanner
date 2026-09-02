@@ -195,6 +195,11 @@ struct MenuBarContentView: View {
     }
 
     private func openMainWindow() {
+        // Dismiss any lingering status bar popovers or floating panels
+        for window in NSApp.windows where window is NSPanel || "\(type(of: window))".contains("StatusBar") {
+            window.orderOut(nil)
+        }
+
         if let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) {
             window.makeKeyAndOrderFront(nil)
             window.deminiaturize(nil)
