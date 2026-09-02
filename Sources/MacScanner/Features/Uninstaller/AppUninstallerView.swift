@@ -5,6 +5,7 @@ import SwiftUI
 import AppKit
 
 /// View for Deep Root App Uninstaller.
+@MainActor
 struct AppUninstallerView: View {
     @StateObject private var engine = AppUninstallerEngine()
     @State private var showConfirmDialog = false

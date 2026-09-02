@@ -13,7 +13,7 @@ struct LargeFileRow: View, Equatable {
     let onCopyPath: () -> Void
     let onTrash: () -> Void
 
-    static func == (lhs: LargeFileRow, rhs: LargeFileRow) -> Bool {
+    nonisolated static func == (lhs: LargeFileRow, rhs: LargeFileRow) -> Bool {
         if lhs.file.id != rhs.file.id { return false }
         if lhs.isSelected != rhs.isSelected { return false }
         return lhs.file.sizeBytes == rhs.file.sizeBytes

@@ -15,7 +15,7 @@ struct GaugeCard: View, Equatable {
     let risk: LoadRisk
     let redLineFraction: Double?
 
-    static func == (lhs: GaugeCard, rhs: GaugeCard) -> Bool {
+    nonisolated static func == (lhs: GaugeCard, rhs: GaugeCard) -> Bool {
         lhs.valueLabel == rhs.valueLabel && lhs.subLabel == rhs.subLabel && lhs.fraction == rhs.fraction && lhs.risk == rhs.risk
     }
 
@@ -88,7 +88,7 @@ struct ThermalCard: View, Equatable {
     let state: ProcessInfo.ThermalState
     let risk: LoadRisk
 
-    static func == (lhs: ThermalCard, rhs: ThermalCard) -> Bool {
+    nonisolated static func == (lhs: ThermalCard, rhs: ThermalCard) -> Bool {
         lhs.state == rhs.state && lhs.risk == rhs.risk
     }
 

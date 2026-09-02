@@ -11,7 +11,7 @@ import Charts
 struct SparklineChartView: View, Equatable {
     let history: [PerformanceHistoryPoint]
 
-    static func == (lhs: SparklineChartView, rhs: SparklineChartView) -> Bool {
+    nonisolated static func == (lhs: SparklineChartView, rhs: SparklineChartView) -> Bool {
         lhs.history.count == rhs.history.count && lhs.history.last?.timestamp == rhs.history.last?.timestamp
     }
 

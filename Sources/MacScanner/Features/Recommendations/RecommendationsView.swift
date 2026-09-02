@@ -6,6 +6,7 @@ import AppKit
 
 // MARK: - Recommendations Tab View
 
+@MainActor
 struct RecommendationsView: View {
     @ObservedObject var vm: RecommendationsViewModel
     @State private var pendingTrash: URL?

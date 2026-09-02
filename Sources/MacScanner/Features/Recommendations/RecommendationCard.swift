@@ -12,7 +12,7 @@ struct RecommendationCard: View, Equatable {
     let onCopyPath: () -> Void
     let onAction: () -> Void
 
-    static func == (lhs: RecommendationCard, rhs: RecommendationCard) -> Bool {
+    nonisolated static func == (lhs: RecommendationCard, rhs: RecommendationCard) -> Bool {
         if lhs.item.id != rhs.item.id { return false }
         if lhs.isSelected != rhs.isSelected { return false }
         return lhs.item.sizeBytes == rhs.item.sizeBytes

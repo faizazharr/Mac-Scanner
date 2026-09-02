@@ -4,11 +4,12 @@
 import SwiftUI
 
 /// Single-event-driven Equatable row for one background service entry.
+@MainActor
 struct BackgroundServiceRow: View, Equatable {
     let service: BackgroundService
     let onReveal: () -> Void
 
-    static func == (lhs: BackgroundServiceRow, rhs: BackgroundServiceRow) -> Bool {
+    nonisolated static func == (lhs: BackgroundServiceRow, rhs: BackgroundServiceRow) -> Bool {
         lhs.service == rhs.service
     }
 

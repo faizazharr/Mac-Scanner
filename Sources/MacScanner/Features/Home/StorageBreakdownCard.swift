@@ -9,7 +9,7 @@ struct StorageBreakdownCard: View, Equatable {
     let volumeFree: Int64
     let onExploreFolders: () -> Void
 
-    static func == (lhs: StorageBreakdownCard, rhs: StorageBreakdownCard) -> Bool {
+    nonisolated static func == (lhs: StorageBreakdownCard, rhs: StorageBreakdownCard) -> Bool {
         lhs.volumeTotal == rhs.volumeTotal && lhs.volumeFree == rhs.volumeFree
     }
 

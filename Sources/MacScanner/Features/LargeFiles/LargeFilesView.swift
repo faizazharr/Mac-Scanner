@@ -6,6 +6,7 @@ import AppKit
 
 // MARK: - Large Files Tab View
 
+@MainActor
 struct LargeFilesView: View {
     @StateObject private var vm = LargeFilesViewModel()
     @State private var pendingTrash: URL?

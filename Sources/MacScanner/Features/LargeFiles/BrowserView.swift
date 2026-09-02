@@ -6,6 +6,7 @@ import AppKit
 
 // MARK: - Browser Tab View
 
+@MainActor
 struct BrowserView: View {
     @StateObject private var vm = BrowserViewModel()
     @State private var pendingTrash: URL?

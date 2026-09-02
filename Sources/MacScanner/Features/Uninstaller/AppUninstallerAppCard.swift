@@ -8,6 +8,7 @@ import AppKit
 ///
 /// Displays the app icon, metadata, a selection summary bar, and a lazy
 /// list of leftover file components with per-item toggle, size badge, and reveal action.
+@MainActor
 struct AppUninstallerAppCard: View {
     let app: InstalledAppInfo
     let isDeleting: Bool

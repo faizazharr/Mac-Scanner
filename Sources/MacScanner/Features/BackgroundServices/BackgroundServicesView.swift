@@ -5,6 +5,7 @@ import SwiftUI
 
 /// Background Services Monitor — shows all Launch Agents, Launch Daemons,
 /// and active background processes, grouped by risk and ownership.
+@MainActor
 struct BackgroundServicesView: View {
     @ObservedObject var vm: BackgroundServicesViewModel
 
