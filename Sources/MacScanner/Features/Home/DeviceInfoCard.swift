@@ -43,9 +43,9 @@ struct DeviceInfoCard: View {
             Divider().opacity(0.4)
 
             // Modular Specs Grid
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 12)], spacing: 12) {
                 specTile(
-                    title: "CPU Cores",
+                    title: "CPU Topology",
                     value: "\(device.totalCores) Cores",
                     subtitle: "\(device.performanceCores) Perf + \(device.efficiencyCores) Eff",
                     icon: "cpu",
@@ -63,9 +63,17 @@ struct DeviceInfoCard: View {
                 specTile(
                     title: "Unified Memory",
                     value: ByteFormat.string(device.memoryBytes),
-                    subtitle: "Fast Unified Architecture",
+                    subtitle: device.memoryTier.rawValue,
                     icon: "memorychip.fill",
                     color: .green
+                )
+
+                specTile(
+                    title: "Thermal & Cooling",
+                    value: device.formFactor.rawValue,
+                    subtitle: device.formFactor.coolingDescription,
+                    icon: device.formFactor == .fanlessLaptop ? "wind" : "fanblades.fill",
+                    color: .orange
                 )
 
                 specTile(
@@ -86,16 +94,16 @@ struct DeviceInfoCard: View {
                     )
                 } else {
                     specTile(
-                        title: "Power Source",
+                        title: "Power Envelope",
                         value: "AC Desktop Power",
-                        subtitle: "Continuous Power",
-                        icon: "bolt.fill",
+                        subtitle: "Constant High Headroom",
+                        icon: "powerplug.fill",
                         color: .yellow
                     )
                 }
 
                 specTile(
-                    title: "Hardware Architecture",
+                    title: "Architecture",
                     value: device.architecture == "arm64" ? "Apple Silicon (ARM)" : "Intel x86_64",
                     subtitle: "64-bit Native Engine",
                     icon: "shield.lefthalf.filled",
@@ -103,7 +111,7 @@ struct DeviceInfoCard: View {
                 )
 
                 specTile(
-                    title: "Wi-Fi Card Interface",
+                    title: "Wi-Fi Interface",
                     value: device.wifiCardModel,
                     subtitle: device.wifiStatus,
                     icon: "wifi",
@@ -119,7 +127,7 @@ struct DeviceInfoCard: View {
                 )
 
                 specTile(
-                    title: "Built-in Speaker System",
+                    title: "Audio Hardware",
                     value: device.speakerModel,
                     subtitle: device.speakerStatus,
                     icon: "speaker.wave.3.fill",

@@ -3,10 +3,45 @@
 
 import Foundation
 
+/// Represents the physical form factor and cooling envelope of the Mac.
+enum DeviceFormFactor: String, Sendable {
+    case fanlessLaptop = "Fanless Laptop"       // MacBook Air (Passive Aluminum Cooling)
+    case activeFanLaptop = "Active Fan Laptop"   // MacBook Pro (Active Dual-Fan System)
+    case desktop = "Desktop Workstation"        // Mac mini, Mac Studio, Mac Pro, iMac (AC Power)
+
+    var coolingDescription: String {
+        switch self {
+        case .fanlessLaptop:
+            return "Passive Cooling (Silent & Fanless)"
+        case .activeFanLaptop:
+            return "Active Air Cooling (Dual Thermal Fans)"
+        case .desktop:
+            return "High Thermal Headroom (Desktop Ventilation)"
+        }
+    }
+}
+
+/// Represents the memory capacity tier for intelligent workload scaling.
+enum MemoryCapacityTier: String, Sendable {
+    case base = "Base (8 GB – 12 GB)"
+    case mainstream = "Mainstream (16 GB – 24 GB)"
+    case pro = "Pro / Max (32 GB – 64 GB)"
+    case ultra = "Ultra / Workstation (96 GB – 192 GB+)"
+
+    var description: String {
+        switch self {
+        case .base: return "Lightweight to standard multitasking; aggressive macOS memory compression."
+        case .mainstream: return "High multitasking headroom for development and creative tools."
+        case .pro: return "Heavy multi-app workflows, virtualization, and 4K/8K media editing."
+        case .ultra: return "Massive dataset processing, local LLMs, and 3D rendering pipelines."
+        }
+    }
+}
+
 /// Static hardware/software facts about this Mac — doesn't change during a
 /// session, so callers should fetch it once (on tab appear) rather than on
 /// the same timer as the live `PerformanceMonitor` snapshot.
-struct DeviceInfo {
+struct DeviceInfo: Sendable {
     let modelName: String
     let modelIdentifier: String
     let chip: String
@@ -18,6 +53,36 @@ struct DeviceInfo {
     let macOSVersion: String
     let macOSBuild: String
     let architecture: String
+
+    /// Form factor and cooling profile
+    var formFactor: DeviceFormFactor {
+        let id = modelIdentifier.lowercased()
+        if id.contains("macbookair") {
+            return .fanlessLaptop
+        } else if id.contains("macbook") {
+            return .activeFanLaptop
+        } else {
+            return .desktop
+        }
+    }
+
+    /// Proportional memory tier
+    var memoryTier: MemoryCapacityTier {
+        let gigabytes = memoryBytes / (1024 * 1024 * 1024)
+        if gigabytes < 14 {
+            return .base
+        } else if gigabytes < 28 {
+            return .mainstream
+        } else if gigabytes < 72 {
+            return .pro
+        } else {
+            return .ultra
+        }
+    }
+
+    var isAppleSilicon: Bool {
+        architecture.contains("arm64") || chip.contains("Apple")
+    }
 
     /// `nil` on a Mac without a battery (e.g. a Mac mini/Studio).
     let batteryCycleCount: Int?

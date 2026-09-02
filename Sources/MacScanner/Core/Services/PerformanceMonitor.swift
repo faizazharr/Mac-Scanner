@@ -279,11 +279,22 @@ enum PerformanceMonitor {
 
         var thermalAdvice: String? {
             guard thermalRisk >= .warning else { return nil }
+            let modelID = PerformanceMonitor.sysctlString("hw.model")
+            let isFanless = modelID.lowercased().contains("macbookair")
+
             switch thermalState {
             case .critical:
-                return "Thermal throttling active to protect hardware. Let your Mac cool down and ensure vents are unobstructed."
+                if isFanless {
+                    return "Thermal regulation active. Fanless MacBook Air automatically throttles clock speeds to keep chassis temperatures safe."
+                } else {
+                    return "Thermal throttling active. Cooling fans are at maximum; ensure table airflow and air vents are unobstructed."
+                }
             default:
-                return "Elevated temperature under current workload. Normal during compilation or exports."
+                if isFanless {
+                    return "Elevated chassis temperature under heavy load. Expected and safe on fanless Mac laptops."
+                } else {
+                    return "Elevated system temperature under active workload. Cooling fans are actively managing heat dissipation."
+                }
             }
         }
 
@@ -371,6 +382,16 @@ enum PerformanceMonitor {
         let used = (active + wired + compressorOccupied) * pageSize
 
         return MemorySnapshot(totalBytes: total, usedBytes: min(used, total))
+    }
+
+    /// Reads string properties via C `sysctlbyname`.
+    static func sysctlString(_ name: String) -> String {
+        var size = 0
+        sysctlbyname(name, nil, &size, nil, 0)
+        guard size > 0 else { return "" }
+        var buffer = [CChar](repeating: 0, count: size)
+        sysctlbyname(name, &buffer, &size, nil, 0)
+        return String(cString: buffer)
     }
 
     /// Reads Swap usage directly via C `sysctlbyname("vm.swapusage")`.
