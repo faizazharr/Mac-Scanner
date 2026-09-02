@@ -1,8 +1,8 @@
 # Changelog
 
-## v1.1.0 — EIZO-Grade Display & Monitor Diagnostics Suite
+## v1.1.0 — Professional Display & Monitor Diagnostics Suite
 
-Comprehensive monitor testing suite inspired by EIZO (`test.eizo.be`) with 7 display calibration and diagnostic modules:
+Comprehensive monitor testing suite with 7 display calibration and diagnostic modules:
 
 ### Features & Test Modules
 

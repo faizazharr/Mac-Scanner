@@ -75,19 +75,19 @@ struct DeviceTestingView: View {
         }
     }
 
-    // MARK: - 1. EIZO-Grade Display & Monitor Suite
+    // MARK: - 1. Display & Monitor Diagnostics Suite
 
     private var screenTestCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("1. EIZO Monitor & Display Diagnostics", systemImage: "display")
+                Label("1. Display & Monitor Diagnostics", systemImage: "display")
                     .font(.headline)
                     .fontWeight(.bold)
                 Spacer()
                 Pill(text: "7 Test Suites", color: .purple)
             }
 
-            Text("Comprehensive display diagnostics inspired by EIZO: Defective Pixels, Luminance Uniformity, 10-bit Gradients, Dynamic Range, Sharpness & Typography, Gamma 2.2, and 120Hz Motion Response.")
+            Text("Comprehensive display diagnostics: Defective Pixels, Luminance Uniformity, 10-bit Gradients, Dynamic Range, Sharpness & Typography, Gamma 2.2, and 120Hz Motion Response.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

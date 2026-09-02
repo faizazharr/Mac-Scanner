@@ -480,7 +480,7 @@ final class DeviceTestingEngine: ObservableObject {
         micAudioLevel = 0.0
     }
 
-    // MARK: - 3. EIZO-Grade Screen Diagnostics Suite
+    // MARK: - 3. Professional Screen Diagnostics Suite
 
     @Published var isScreenTestActive: Bool = false
     @Published var selectedScreenCategory: ScreenTestCategory = .defectivePixels
@@ -795,7 +795,7 @@ final class DeviceTestingEngine: ObservableObject {
     }
 }
 
-/// Fullscreen EIZO-Grade Display & Monitor Diagnostics Suite View
+/// Fullscreen Professional Display & Monitor Diagnostics Suite View
 struct DeadPixelFullscreenView: View {
     @ObservedObject var engine: DeviceTestingEngine
     @State private var hideHUDTimer: Timer?
@@ -808,7 +808,7 @@ struct DeadPixelFullscreenView: View {
             ScreenTestCanvasView(pattern: pattern, motionSpeed: engine.motionSpeed)
                 .ignoresSafeArea()
 
-            // Floating EIZO Navigation & Status HUD
+            // Floating Navigation & Status HUD
             if engine.isHUDVisible {
                 VStack(spacing: 12) {
                     // Category Selection Pills

@@ -4,7 +4,7 @@
 import SwiftUI
 import AppKit
 
-/// EIZO-grade Display Diagnostic Categories inspired by test.eizo.be.
+/// Professional Display Diagnostic Categories.
 enum ScreenTestCategory: String, CaseIterable, Identifiable, Sendable {
     case defectivePixels = "Defective Pixels"
     case uniformity = "Uniformity"
@@ -50,7 +50,7 @@ struct ScreenTestItem: Identifiable, Sendable {
     let instructions: String
 }
 
-/// Factory and catalog of all EIZO-grade monitor test patterns.
+/// Factory and catalog of all monitor test patterns.
 enum ScreenTestCatalog {
     static let allPatterns: [ScreenTestItem] = [
         // 1. Defective Pixels (Solid Colors)
