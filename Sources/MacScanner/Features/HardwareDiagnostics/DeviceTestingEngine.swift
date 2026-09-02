@@ -4,438 +4,96 @@
 import Foundation
 import SwiftUI
 import AppKit
-import AVFoundation
 
-/// Backend engine for hardware testing: Audio synthesis, Mic sampling,
-/// Fullscreen Dead Pixel Window, Keyboard event monitoring, and Trackpad Haptics.
+/// Central hardware diagnostics coordinator engine.
+///
+/// Coordinates specialized sub-engines for audio synthesis, microphone sampling,
+/// fullscreen monitor test patterns, and AppKit hardware keyboard event interception.
 @MainActor
 final class DeviceTestingEngine: ObservableObject {
 
-    // MARK: - Audio Test State
+    // MARK: - Specialized Sub-Engines
 
-    @Published private(set) var isPlayingAudio = false
-    @Published private(set) var currentlyTestingSpeaker: String? = nil
+    /// Dedicated audio diagnostics tone and frequency sweep synthesizer.
+    let audio = AudioDiagnosticEngine()
 
-    private var audioEngine: AVAudioEngine?
-    private var playerNode: AVAudioPlayerNode?
-    private var audioStopTimer: Timer?
-
-    // MARK: - Microphone Test State
-
-    @Published private(set) var isRecordingMic = false
-    @Published private(set) var micAudioLevel: Float = 0.0
-    @Published private(set) var isPlayingLoopback = false
-
-    private var micRecorder: AVAudioRecorder?
-    private var loopbackPlayer: AVAudioPlayer?
-    private var micLevelTimer: Timer?
-    private let micTempURL = FileManager.default.temporaryDirectory.appendingPathComponent("macscanner_mic_test.m4a")
+    /// Dedicated microphone decibel sampling and loopback recorder.
+    let mic = MicrophoneDiagnosticEngine()
 
     // MARK: - Keyboard Test State (KeyCodes, Shortcut Interception & Multi-Key Rollover)
 
+    /// Set of hardware key codes currently depressed in real-time.
     @Published var pressedKeyCodes: Set<UInt16> = []
+
+    /// Set of all unique hardware key codes successfully tested during this session.
     @Published var testedKeyCodes: Set<UInt16> = []
+
+    /// Human-readable telemetry description of the last keystroke event.
     @Published var lastKeyPressedInfo: String = "Click keyboard area and press any key or shortcut..."
+
+    /// Detected macOS shortcut combination name if a hotkey was pressed.
     @Published var detectedShortcutName: String? = nil
+
+    /// Total cumulative keystroke count recorded during this test session.
     @Published var totalKeystrokes: Int = 0
 
-    // Full Apple Mac Keyboard Layout Definition
-    static let functionRow: [KeyDef] = [
-        KeyDef("ESC", "esc", code: 53, width: 1.3),
-        KeyDef("F1", "F1", sub: "🔅", code: 122),
-        KeyDef("F2", "F2", sub: "🔆", code: 120),
-        KeyDef("F3", "F3", sub: "🪟", code: 99),
-        KeyDef("F4", "F4", sub: "🔍", code: 118),
-        KeyDef("F5", "F5", sub: "🎙️", code: 96),
-        KeyDef("F6", "F6", sub: "🌙", code: 97),
-        KeyDef("F7", "F7", sub: "⏮", code: 98),
-        KeyDef("F8", "F8", sub: "⏯", code: 100),
-        KeyDef("F9", "F9", sub: "⏭", code: 101),
-        KeyDef("F10", "F10", sub: "🔇", code: 109),
-        KeyDef("F11", "F11", sub: "🔉", code: 103),
-        KeyDef("F12", "F12", sub: "🔊", code: 111),
-        KeyDef("PWR", "⏻", code: 108, width: 1.3)
-    ]
+    // Forwarding convenience properties
+    static var functionRow: [KeyDef] { KeyboardLayoutCatalog.functionRow }
+    static var numberRow: [KeyDef] { KeyboardLayoutCatalog.numberRow }
+    static var qwertyRow: [KeyDef] { KeyboardLayoutCatalog.qwertyRow }
+    static var asdfRow: [KeyDef] { KeyboardLayoutCatalog.asdfRow }
+    static var zxcvRow: [KeyDef] { KeyboardLayoutCatalog.zxcvRow }
+    static var bottomRow: [KeyDef] { KeyboardLayoutCatalog.bottomRow }
+    static var totalStandardKeyCount: Int { KeyboardLayoutCatalog.totalStandardKeyCount }
 
-    static let numberRow: [KeyDef] = [
-        KeyDef("Tilde", "`", sub: "~", code: 50),
-        KeyDef("1", "1", sub: "!", code: 18),
-        KeyDef("2", "2", sub: "@", code: 19),
-        KeyDef("3", "3", sub: "#", code: 20),
-        KeyDef("4", "4", sub: "$", code: 21),
-        KeyDef("5", "5", sub: "%", code: 23),
-        KeyDef("6", "6", sub: "^", code: 22),
-        KeyDef("7", "7", sub: "&", code: 26),
-        KeyDef("8", "8", sub: "*", code: 28),
-        KeyDef("9", "9", sub: "(", code: 25),
-        KeyDef("0", "0", sub: ")", code: 29),
-        KeyDef("Minus", "-", sub: "_", code: 27),
-        KeyDef("Equal", "=", sub: "+", code: 24),
-        KeyDef("Delete", "delete", code: 51, width: 1.6)
-    ]
+    var isPlayingAudio: Bool { audio.isPlayingAudio }
+    var currentlyTestingSpeaker: String? { audio.currentlyTestingSpeaker }
+    var isRecordingMic: Bool { mic.isRecordingMic }
+    var micAudioLevel: Float { mic.micAudioLevel }
+    var isPlayingLoopback: Bool { mic.isPlayingLoopback }
 
-    static let qwertyRow: [KeyDef] = [
-        KeyDef("Tab", "tab", code: 48, width: 1.5),
-        KeyDef("Q", "Q", code: 12),
-        KeyDef("W", "W", code: 13),
-        KeyDef("E", "E", code: 14),
-        KeyDef("R", "R", code: 15),
-        KeyDef("T", "T", code: 17),
-        KeyDef("Y", "Y", code: 16),
-        KeyDef("U", "U", code: 32),
-        KeyDef("I", "I", code: 34),
-        KeyDef("O", "O", code: 31),
-        KeyDef("P", "P", code: 35),
-        KeyDef("LBracket", "[", sub: "{", code: 33),
-        KeyDef("RBracket", "]", sub: "}", code: 30),
-        KeyDef("Backslash", "\\", sub: "|", code: 42, width: 1.2)
-    ]
+    // MARK: - Audio & Mic Delegations
 
-    static let asdfRow: [KeyDef] = [
-        KeyDef("Caps", "caps lock", code: 57, width: 1.8),
-        KeyDef("A", "A", code: 0),
-        KeyDef("S", "S", code: 1),
-        KeyDef("D", "D", code: 2),
-        KeyDef("F", "F", code: 3),
-        KeyDef("G", "G", code: 5),
-        KeyDef("H", "H", code: 4),
-        KeyDef("J", "J", code: 38),
-        KeyDef("K", "K", code: 40),
-        KeyDef("L", "L", code: 37),
-        KeyDef("Semicolon", ";", sub: ":", code: 41),
-        KeyDef("Quote", "'", sub: "\"", code: 39),
-        KeyDef("Return", "return", code: 36, width: 1.8)
-    ]
-
-    static let zxcvRow: [KeyDef] = [
-        KeyDef("Shift_L", "shift", code: 56, width: 2.2),
-        KeyDef("Z", "Z", code: 6),
-        KeyDef("X", "X", code: 7),
-        KeyDef("C", "C", code: 8),
-        KeyDef("V", "V", code: 9),
-        KeyDef("B", "B", code: 11),
-        KeyDef("N", "N", code: 45),
-        KeyDef("M", "M", code: 46),
-        KeyDef("Comma", ",", sub: "<", code: 43),
-        KeyDef("Dot", ".", sub: ">", code: 47),
-        KeyDef("Slash", "/", sub: "?", code: 44),
-        KeyDef("Shift_R", "shift", code: 60, width: 2.2)
-    ]
-
-    static let bottomRow: [KeyDef] = [
-        KeyDef("Fn", "fn 🌐", code: 63, width: 1.1),
-        KeyDef("Ctrl_L", "control", code: 59, width: 1.1),
-        KeyDef("Opt_L", "option", code: 58, width: 1.1),
-        KeyDef("Cmd_L", "command", code: 55, width: 1.4),
-        KeyDef("Space", "", code: 49, width: 5.5),
-        KeyDef("Cmd_R", "command", code: 54, width: 1.4),
-        KeyDef("Opt_R", "option", code: 61, width: 1.1),
-        KeyDef("Arrow_L", "◀", code: 123, width: 0.9),
-        KeyDef("Arrow_UD", "▲/▼", code: 126, width: 0.9),
-        KeyDef("Arrow_R", "▶", code: 124, width: 0.9)
-    ]
-
-    static var totalStandardKeyCount: Int {
-        functionRow.count + numberRow.count + qwertyRow.count + asdfRow.count + zxcvRow.count + bottomRow.count
+    /// Plays a test tone on a specific stereo channel.
+    func playTone(frequency: Double = 440.0, pan: Float = 0.0, duration: Double = 1.0, channelName: String) {
+        audio.playTone(frequency: frequency, pan: pan, duration: duration, channelName: channelName)
     }
 
-    // MARK: - 1. Professional Stereo Audio Diagnostic Sweep
-
-    func playTone(frequency: Double, pan: Float, duration: Double = 1.0, channelName: String) {
-        stopAudio()
-
-        isPlayingAudio = true
-        currentlyTestingSpeaker = channelName
-
-        let engine = AVAudioEngine()
-        let player = AVAudioPlayerNode()
-        engine.attach(player)
-
-        let sampleRate: Double = 44100.0
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else {
-            isPlayingAudio = false
-            return
-        }
-        engine.connect(player, to: engine.mainMixerNode, format: format)
-        player.pan = pan
-
-        let frameCount = AVAudioFrameCount(sampleRate * duration)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
-            stopAudio()
-            return
-        }
-        buffer.frameLength = frameCount
-
-        let channels = buffer.floatChannelData!
-        let theta = 2.0 * .pi * frequency / sampleRate
-
-        for frame in 0..<Int(frameCount) {
-            let progress = Double(frame) / Double(frameCount)
-            let envelope: Double
-            if progress < 0.05 {
-                envelope = progress / 0.05
-            } else if progress > 0.85 {
-                envelope = (1.0 - progress) / 0.15
-            } else {
-                envelope = 1.0
-            }
-
-            let val = Float(sin(theta * Double(frame)) * 0.4 * envelope)
-            channels[0][frame] = val
-            channels[1][frame] = val
-        }
-
-        do {
-            try engine.start()
-            player.play()
-            player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
-
-            self.audioEngine = engine
-            self.playerNode = player
-
-            audioStopTimer = Timer.scheduledTimer(withTimeInterval: duration + 0.1, repeats: false) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.stopAudio()
-                }
-            }
-        } catch {
-            stopAudio()
-        }
-    }
-
+    /// Plays a logarithmic frequency sweep from 60 Hz to 8000 Hz across both stereo channels.
     func playFrequencySweep() {
-        stopAudio()
-        isPlayingAudio = true
-        currentlyTestingSpeaker = "Sweep (60Hz – 8000Hz)"
-
-        let engine = AVAudioEngine()
-        let player = AVAudioPlayerNode()
-        engine.attach(player)
-
-        let duration = 2.5
-        let sampleRate: Double = 44100.0
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else {
-            stopAudio()
-            return
-        }
-        engine.connect(player, to: engine.mainMixerNode, format: format)
-
-        let frameCount = AVAudioFrameCount(sampleRate * duration)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
-            stopAudio()
-            return
-        }
-        buffer.frameLength = frameCount
-
-        let channels = buffer.floatChannelData!
-        let startFreq = 60.0
-        let endFreq = 8000.0
-
-        for frame in 0..<Int(frameCount) {
-            let t = Double(frame) / sampleRate
-            let freq = startFreq * pow(endFreq / startFreq, t / duration)
-            let val = Float(sin(2.0 * .pi * freq * t) * 0.35)
-            channels[0][frame] = val
-            channels[1][frame] = val
-        }
-
-        do {
-            try engine.start()
-            player.play()
-            player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
-
-            self.audioEngine = engine
-            self.playerNode = player
-
-            audioStopTimer = Timer.scheduledTimer(withTimeInterval: duration + 0.1, repeats: false) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.stopAudio()
-                }
-            }
-        } catch {
-            stopAudio()
-        }
+        audio.playFrequencySweep()
     }
 
+    /// Immediately stops any ongoing audio tests.
     func stopAudio() {
-        stopAudioTest()
+        audio.stopAudio()
     }
 
-    func playStereoTestTone(channel: String, frequency: Double = 440.0) {
-        stopAudioTest()
-
-        isPlayingAudio = true
-        currentlyTestingSpeaker = channel
-
-        let engine = AVAudioEngine()
-        let player = AVAudioPlayerNode()
-        engine.attach(player)
-
-        let sampleRate: Double = 44100.0
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else {
-            isPlayingAudio = false
-            return
-        }
-
-        engine.connect(player, to: engine.mainMixerNode, format: format)
-
-        do {
-            try engine.start()
-            player.play()
-
-            let duration: Double = 1.8
-            let frameCount = AVAudioFrameCount(sampleRate * duration)
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else { return }
-            buffer.frameLength = frameCount
-
-            let channels = buffer.floatChannelData
-            guard let leftChannel = channels?[0], let rightChannel = channels?[1] else { return }
-
-            let angularFreq = 2.0 * Double.pi * frequency / sampleRate
-
-            for i in 0..<Int(frameCount) {
-                let sample = Float(sin(angularFreq * Double(i)))
-                let envelope: Float
-                let attackFrames = Int(sampleRate * 0.05)
-                let releaseFrames = Int(sampleRate * 0.1)
-
-                if i < attackFrames {
-                    envelope = Float(i) / Float(attackFrames)
-                } else if i > Int(frameCount) - releaseFrames {
-                    envelope = Float(Int(frameCount) - i) / Float(releaseFrames)
-                } else {
-                    envelope = 1.0
-                }
-
-                let finalSample = sample * envelope * 0.4
-
-                if channel == "Left" {
-                    leftChannel[i] = finalSample
-                    rightChannel[i] = 0.0
-                } else if channel == "Right" {
-                    leftChannel[i] = 0.0
-                    rightChannel[i] = finalSample
-                } else {
-                    leftChannel[i] = finalSample
-                    rightChannel[i] = finalSample
-                }
-            }
-
-            player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
-
-            self.audioEngine = engine
-            self.playerNode = player
-
-            audioStopTimer?.invalidate()
-            audioStopTimer = Timer.scheduledTimer(withTimeInterval: duration + 0.1, repeats: false) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.stopAudioTest()
-                }
-            }
-
-            ToastManager.shared.show("Testing \(channel) Speaker", icon: "speaker.wave.3.fill", tint: .blue)
-        } catch {
-            isPlayingAudio = false
-            currentlyTestingSpeaker = nil
-        }
-    }
-
-    func stopAudioTest() {
-        audioStopTimer?.invalidate()
-        audioStopTimer = nil
-        playerNode?.stop()
-        audioEngine?.stop()
-        playerNode = nil
-        audioEngine = nil
-        isPlayingAudio = false
-        currentlyTestingSpeaker = nil
-    }
-
-    // MARK: - 2. Real-Time Microphone Decibel Input & Loopback
-
+    /// Starts a 3-second microphone sample test with real-time decibel metering.
     func startMicSampling() {
-        stopMicSampling()
-
-        let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100.0,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-        ]
-
-        do {
-            let recorder = try AVAudioRecorder(url: micTempURL, settings: settings)
-            recorder.isMeteringEnabled = true
-            recorder.record(forDuration: 3.0)
-            self.micRecorder = recorder
-            self.isRecordingMic = true
-
-            ToastManager.shared.show("Recording 3-sec sample...", icon: "mic.fill", tint: .orange)
-
-            micLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    guard let self = self, let rec = self.micRecorder, rec.isRecording else { return }
-                    rec.updateMeters()
-                    let power = rec.averagePower(forChannel: 0)
-                    let normalized = max(0.0, min(1.0, (power + 50.0) / 50.0))
-                    self.micAudioLevel = normalized
-                }
-            }
-
-            Timer.scheduledTimer(withTimeInterval: 3.1, repeats: false) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.finishMicRecording()
-                }
-            }
-        } catch {
-            ToastManager.shared.show("Microphone access error", icon: "mic.slash.fill", tint: .red)
-        }
+        mic.startMicSampling()
     }
 
-    private func finishMicRecording() {
-        micLevelTimer?.invalidate()
-        micLevelTimer = nil
-        micRecorder?.stop()
-        micRecorder = nil
-        isRecordingMic = false
-        micAudioLevel = 0.0
-
-        do {
-            let player = try AVAudioPlayer(contentsOf: micTempURL)
-            self.loopbackPlayer = player
-            self.isPlayingLoopback = true
-            player.play()
-
-            Timer.scheduledTimer(withTimeInterval: player.duration + 0.2, repeats: false) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.isPlayingLoopback = false
-                    self?.loopbackPlayer = nil
-                }
-            }
-            ToastManager.shared.show("Playing back 3-second recording", icon: "waveform", tint: .green)
-        } catch {
-            // Player failed
-        }
-    }
-
+    /// Stops active microphone recording and loopback playback.
     func stopMicSampling() {
-        micLevelTimer?.invalidate()
-        micLevelTimer = nil
-        micRecorder?.stop()
-        micRecorder = nil
-        loopbackPlayer?.stop()
-        loopbackPlayer = nil
-        isRecordingMic = false
-        isPlayingLoopback = false
-        micAudioLevel = 0.0
+        mic.stopMicSampling()
     }
 
-    // MARK: - 3. Professional Screen Diagnostics Suite
+    // MARK: - Display Diagnostics Suite
 
+    /// True if the fullscreen display diagnostic suite is active.
     @Published var isScreenTestActive: Bool = false
+
+    /// Currently active display test category.
     @Published var selectedScreenCategory: ScreenTestCategory = .defectivePixels
+
+    /// Index of the current test pattern within the active category.
     @Published var currentPatternIndex: Int = 0
+
+    /// Visibility state of the floating fullscreen HUD toolbar.
     @Published var isHUDVisible: Bool = true
+
+    /// Movement speed for the 120Hz ProMotion motion response test pattern (pixels/second).
     @Published var motionSpeed: Double = 480.0
 
     private var wasWindowOriginallyFullscreen: Bool = false
@@ -447,13 +105,12 @@ final class DeviceTestingEngine: ObservableObject {
 
     var currentPattern: ScreenTestItem {
         let patterns = currentCategoryPatterns
-        guard !patterns.isEmpty else {
-            return ScreenTestCatalog.allPatterns[0]
-        }
+        guard !patterns.isEmpty else { return ScreenTestCatalog.allPatterns[0] }
         let safeIndex = max(0, min(currentPatternIndex, patterns.count - 1))
         return patterns[safeIndex]
     }
 
+    /// Enters native macOS fullscreen mode and starts the display diagnostic suite.
     func launchDeadPixelTester(category: ScreenTestCategory = .defectivePixels) {
         selectedScreenCategory = category
         currentPatternIndex = 0
@@ -472,6 +129,7 @@ final class DeviceTestingEngine: ObservableObject {
         startKeyEventMonitoring()
     }
 
+    /// Exits the fullscreen display diagnostic mode and restores normal window dimensions.
     func exitDeadPixelTester() {
         isScreenTestActive = false
         stopKeyEventMonitoring()
@@ -483,12 +141,14 @@ final class DeviceTestingEngine: ObservableObject {
         }
     }
 
+    /// Selects a specific display diagnostic category and resets pattern index.
     func selectCategory(_ category: ScreenTestCategory) {
         selectedScreenCategory = category
         currentPatternIndex = 0
         flashHUD()
     }
 
+    /// Advances to the next test pattern in the current category.
     func nextPattern() {
         let count = currentCategoryPatterns.count
         guard count > 0 else { return }
@@ -496,6 +156,7 @@ final class DeviceTestingEngine: ObservableObject {
         flashHUD()
     }
 
+    /// Returns to the previous test pattern in the current category.
     func previousPattern() {
         let count = currentCategoryPatterns.count
         guard count > 0 else { return }
@@ -503,12 +164,7 @@ final class DeviceTestingEngine: ObservableObject {
         flashHUD()
     }
 
-    func toggleHUD() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            isHUDVisible.toggle()
-        }
-    }
-
+    /// Temporarily shows the HUD navigation bar.
     func flashHUD() {
         withAnimation(.easeInOut(duration: 0.2)) {
             isHUDVisible = true
@@ -530,47 +186,24 @@ final class DeviceTestingEngine: ObservableObject {
         }
     }
 
-    func handleFullscreenKeyDown(_ event: NSEvent) -> Bool {
+    private func handleFullscreenKeyDown(_ event: NSEvent) -> Bool {
         switch event.keyCode {
-        case 53: // ESC
-            exitDeadPixelTester()
-            return true
-        case 49, 36, 124: // Space, Enter, Right Arrow
-            nextPattern()
-            return true
-        case 123: // Left Arrow
-            previousPattern()
-            return true
-        case 4: // 'H' Key
-            toggleHUD()
-            return true
-        case 18: // '1'
-            selectCategory(.defectivePixels)
-            return true
-        case 19: // '2'
-            selectCategory(.uniformity)
-            return true
-        case 20: // '3'
-            selectCategory(.gradients)
-            return true
-        case 21: // '4'
-            selectCategory(.colorDistances)
-            return true
-        case 23: // '5'
-            selectCategory(.sharpness)
-            return true
-        case 22: // '6'
-            selectCategory(.gamma)
-            return true
-        case 26: // '7'
-            selectCategory(.motion)
-            return true
-        default:
-            return false
+        case 53: exitDeadPixelTester(); return true
+        case 49, 36, 124: nextPattern(); return true
+        case 123: previousPattern(); return true
+        case 4: isHUDVisible.toggle(); return true
+        case 18: selectCategory(.defectivePixels); return true
+        case 19: selectCategory(.uniformity); return true
+        case 20: selectCategory(.gradients); return true
+        case 21: selectCategory(.colorDistances); return true
+        case 23: selectCategory(.sharpness); return true
+        case 22: selectCategory(.gamma); return true
+        case 26: selectCategory(.motion); return true
+        default: return false
         }
     }
 
-    // MARK: - 4. Direct First-Responder Keyboard Event Handlers
+    // MARK: - Keyboard Event Handling
 
     func handleKeyDown(code: UInt16, flags: NSEvent.ModifierFlags, chars: String?) {
         pressedKeyCodes.insert(code)
@@ -596,20 +229,13 @@ final class DeviceTestingEngine: ObservableObject {
     func handleFlagsChanged(code: UInt16, flags: NSEvent.ModifierFlags) {
         let isDown: Bool
         switch code {
-        case 56, 60:
-            isDown = flags.contains(.shift)
-        case 55, 54:
-            isDown = flags.contains(.command)
-        case 58, 61:
-            isDown = flags.contains(.option)
-        case 59, 62:
-            isDown = flags.contains(.control)
-        case 57:
-            isDown = flags.contains(.capsLock)
-        case 63:
-            isDown = flags.contains(.function)
-        default:
-            isDown = false
+        case 56, 60: isDown = flags.contains(.shift)
+        case 55, 54: isDown = flags.contains(.command)
+        case 58, 61: isDown = flags.contains(.option)
+        case 59, 62: isDown = flags.contains(.control)
+        case 57: isDown = flags.contains(.capsLock)
+        case 63: isDown = flags.contains(.function)
+        default: isDown = false
         }
 
         if isDown {
@@ -630,7 +256,6 @@ final class DeviceTestingEngine: ObservableObject {
         let isCtrl = flags.contains(.control)
 
         guard isCmd || isOpt || isCtrl || isShift else { return nil }
-
         let char = (chars ?? "").uppercased()
 
         if isCmd {
@@ -686,7 +311,7 @@ final class DeviceTestingEngine: ObservableObject {
         return parts.joined(separator: " ")
     }
 
-    func humanName(for code: UInt16, chars: String?) -> String {
+    private func humanName(for code: UInt16, chars: String?) -> String {
         switch code {
         case 53: return "ESC"
         case 48: return "Tab"
@@ -720,13 +345,12 @@ final class DeviceTestingEngine: ObservableObject {
         case 103: return "F11"
         case 111: return "F12"
         default:
-            if let chars = chars, !chars.isEmpty {
-                return chars.uppercased()
-            }
+            if let chars = chars, !chars.isEmpty { return chars.uppercased() }
             return "Key #\(code)"
         }
     }
 
+    /// Resets the keyboard test session and clears pressed/tested key caches.
     func resetKeyboardTest() {
         pressedKeyCodes.removeAll()
         testedKeyCodes.removeAll()
@@ -735,8 +359,7 @@ final class DeviceTestingEngine: ObservableObject {
         lastKeyPressedInfo = "Matrix reset. Press any key or shortcut to test..."
     }
 
-    // MARK: - 5. Trackpad & Haptic Feedback
-
+    /// Triggers physical trackpad haptic vibration feedback.
     func triggerHapticFeedback(pattern: NSHapticFeedbackManager.FeedbackPattern = .generic) {
         NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     }

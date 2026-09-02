@@ -2,17 +2,14 @@
 // Copyright © 2026 Faiz Azhar Ristya Nugraha. All rights reserved.
 
 import SwiftUI
-import Charts
 import AppKit
 
-/// Performance tab: live RAM/CPU/GPU/thermal/swap gauges, Swift Charts sparklines,
+/// Performance tab: Live system telemetry gauges, activity sparklines,
 /// actionable recommendations, and the Interactive Root-Cause Inspector.
 struct PerformanceView: View {
     @ObservedObject var vm: PerformanceViewModel
     @ObservedObject var deviceVM: DeviceInfoViewModel
 
-    private enum ProcessSort: String, CaseIterable { case cpu = "CPU", memory = "RAM" }
-    @State private var processSort: ProcessSort = .cpu
     @State private var pendingKillPID: (pid: Int32, name: String)?
     @State private var pendingCleanCache: (url: URL, appName: String)?
 
@@ -27,7 +24,7 @@ struct PerformanceView: View {
 
                     // Sparkline Charts
                     if vm.history.count >= 2 {
-                        sparklineChartSection
+                        SparklineChartView(history: vm.history)
                     }
 
                     // Recommendations & Diagnostics
@@ -37,22 +34,27 @@ struct PerformanceView: View {
 
                     // Interactive Root-Cause Inspector (Anatomy Breakdown)
                     if let inspected = vm.inspectedApp {
-                        rootCauseInspectorCard(inspected)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        RootCauseInspectorCard(
+                            app: inspected,
+                            vm: vm,
+                            pendingKillPID: $pendingKillPID,
+                            pendingCleanCache: $pendingCleanCache
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
-                    // What's Making This Mac Heavy (Clickable to Inspect)
+                    // Heaviest User Apps (Clickable to Inspect)
                     let userApps = vm.heaviestAppsThisSession.filter { !$0.isSystemDaemon }
                     if !userApps.isEmpty {
                         heaviestAppsSection(userApps)
                     }
 
-                    // Process List
-                    let processes = (processSort == .cpu ? snapshot.topProcesses : snapshot.topProcessesByMemory)
-                        .filter { p in
-                            vm.processSearchQuery.isEmpty || p.name.localizedCaseInsensitiveContains(vm.processSearchQuery)
-                        }
-                    processListSection(processes)
+                    // All Active Processes Table
+                    ProcessListView(
+                        processes: snapshot.topProcesses,
+                        vm: vm,
+                        pendingKillPID: $pendingKillPID
+                    )
                 } else {
                     HStack {
                         Spacer()
@@ -104,16 +106,15 @@ struct PerformanceView: View {
         }
     }
 
+    // MARK: - Header
+
     private var header: some View {
         HStack {
             HStack(spacing: 8) {
                 Circle()
                     .fill(Color.green)
                     .frame(width: 9, height: 9)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.green.opacity(0.4), lineWidth: 3)
-                    )
+                    .overlay(Circle().stroke(Color.green.opacity(0.4), lineWidth: 3))
                 Text("Live System Performance")
                     .font(.title3)
                     .fontWeight(.bold)
@@ -172,335 +173,6 @@ struct PerformanceView: View {
         }
     }
 
-    // MARK: - Root-Cause Inspector (App Anatomy Breakdown)
-
-    private func rootCauseInspectorCard(_ app: AppInspectionDetail) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Header Bar
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(app.color.opacity(0.18))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: app.icon)
-                        .font(.title3.bold())
-                        .foregroundStyle(app.color)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        Text("Root-Cause Deep Dive: \(app.appName)")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                        Pill(text: "Inspecting", color: app.color)
-                    }
-                    Text(app.rootCauseSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                HStack(spacing: 8) {
-                    if let main = app.mainProcess {
-                        Button {
-                            pendingKillPID = (main.pid, app.appName)
-                        } label: {
-                            Label("Hentikan \(app.appName)", systemImage: "xmark.octagon.fill")
-                                .font(.caption.bold())
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
-                        .controlSize(.small)
-                    }
-
-                    Button {
-                        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
-                    } label: {
-                        Label("Activity Monitor", systemImage: "waveform.path.ecg")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            vm.send(.inspectApp(""))
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Tutup inspeksi")
-                }
-            }
-
-            // Visual Resource Composition Bar
-            if app.totalRAMBytes > 0 {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Memory & Process Composition:")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Total: \(ByteFormat.string(app.totalRAMBytes)) RAM • \(Int(app.totalCPUPercent))% CPU")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.primary)
-                    }
-
-                    GeometryReader { geo in
-                        let w = geo.size.width
-                        let total = CGFloat(max(1, app.totalRAMBytes))
-                        let rendererW = w * (CGFloat(app.rendererRAMBytes) / total)
-                        let gpuW = w * (CGFloat(app.gpuRAMBytes) / total)
-                        let baseW = max(0, w - rendererW - gpuW)
-
-                        HStack(spacing: 2) {
-                            if rendererW > 0 {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.blue)
-                                    .frame(width: rendererW, height: 10)
-                            }
-                            if gpuW > 0 {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.purple)
-                                    .frame(width: gpuW, height: 10)
-                            }
-                            if baseW > 0 {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.cyan)
-                                    .frame(width: baseW, height: 10)
-                            }
-                        }
-                    }
-                    .frame(height: 10)
-
-                    HStack(spacing: 14) {
-                        legendItem(title: "Tabs / Renderers: \(ByteFormat.string(app.rendererRAMBytes))", color: .blue)
-                        if app.gpuRAMBytes > 0 {
-                            legendItem(title: "GPU Accelerator: \(ByteFormat.string(app.gpuRAMBytes))", color: .purple)
-                        }
-                        legendItem(title: "Core App: \(ByteFormat.string(app.baseAppRAMBytes))", color: .cyan)
-                    }
-                }
-                .padding(10)
-                .glassCard(tint: app.color, opacity: 0.05)
-            }
-
-            // 3-Column Diagnostic Tiles
-            HStack(alignment: .top, spacing: 10) {
-                // Column 1: Tabs & Renderers
-                diagnosticTile(
-                    title: "Tabs & Workers",
-                    icon: "square.stack.3d.down.right.fill",
-                    color: .blue
-                ) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(app.rendererProcesses.count) Active Renderers")
-                            .font(.subheadline.bold())
-                        Text("Consuming \(ByteFormat.string(app.rendererRAMBytes)) RAM across background tabs.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-
-                        if let heaviest = app.heaviestWorker, heaviest.memoryBytes > 300 * 1024 * 1024 {
-                            Divider().padding(.vertical, 2)
-                            HStack {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text("Heaviest Tab (PID \(heaviest.pid))")
-                                        .font(.system(size: 10, weight: .bold))
-                                    Text("\(ByteFormat.string(heaviest.memoryBytes)) RAM")
-                                        .font(.system(size: 9, design: .monospaced))
-                                        .foregroundStyle(.orange)
-                                }
-                                Spacer()
-                                Button("Close Tab") {
-                                    pendingKillPID = (heaviest.pid, "\(app.appName) Tab (PID \(heaviest.pid))")
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.mini)
-                            }
-                        }
-                    }
-                }
-
-                // Column 2: Installed Extensions
-                diagnosticTile(
-                    title: "Browser Extensions",
-                    icon: "puzzlepiece.extension.fill",
-                    color: .orange
-                ) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        if !app.extensions.isEmpty {
-                            Text("\(app.extensions.count) Extensions Installed")
-                                .font(.subheadline.bold())
-                            let heavyCount = app.extensions.filter(\.isHeavyCandidate).count
-                            Text(heavyCount > 0 ? "\(heavyCount) potentially heavy extensions running." : "All extensions look lightweight.")
-                                .font(.caption2)
-                                .foregroundStyle(heavyCount > 0 ? .orange : .secondary)
-
-                            Button("Kelola di \(app.appName)") {
-                                DesignerBrowserScanner.openBrowserExtensionPage(browserName: app.appName)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
-                            .padding(.top, 4)
-                        } else {
-                            Text("No Extensions")
-                                .font(.subheadline.bold())
-                            Text("This application does not load browser extension scripts.")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                // Column 3: Disk & Web Cache
-                diagnosticTile(
-                    title: "Disk & Cache Bloat",
-                    icon: "externaldrive.fill",
-                    color: .purple
-                ) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(ByteFormat.string(app.diskCacheBytes))
-                            .font(.subheadline.bold())
-                        Text("Web thumbnail, shader, and temporary cache stored on disk.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-
-                        if let cacheURL = app.diskCacheURL, app.diskCacheBytes > 10 * 1024 * 1024 {
-                            Button("Clean Cache") {
-                                pendingCleanCache = (cacheURL, app.appName)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.blue)
-                            .controlSize(.mini)
-                            .padding(.top, 4)
-                        }
-                    }
-                }
-            }
-
-            // Actionable Suggestion Banner
-            HStack(spacing: 8) {
-                Image(systemName: "lightbulb.fill")
-                    .font(.caption.bold())
-                    .foregroundStyle(.orange)
-                Text(app.primaryActionSuggestion)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.primary)
-                Spacer()
-            }
-            .padding(10)
-            .background(Color.orange.opacity(0.10))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .padding(16)
-        .glassCard(tint: app.color, opacity: 0.10)
-    }
-
-    private func diagnosticTile<Content: View>(title: String, icon: String, color: Color, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.caption2)
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.secondary)
-            }
-            content()
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-        .glassCard()
-    }
-
-    private func legendItem(title: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(title).font(.system(size: 9)).foregroundStyle(.secondary)
-        }
-    }
-
-    // MARK: - Sparklines
-
-    private var sparklineChartSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label("Realtime Activity Trends", systemImage: "chart.xyaxis.line")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-                HStack(spacing: 12) {
-                    HStack(spacing: 4) {
-                        Circle().fill(Color.cyan).frame(width: 7, height: 7)
-                        Text("CPU %").font(.caption2).foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: 4) {
-                        Circle().fill(Color.purple).frame(width: 7, height: 7)
-                        Text("RAM %").font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            Chart(vm.history) { point in
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("CPU", point.cpuPercent),
-                    series: .value("Metric", "CPU")
-                )
-                .foregroundStyle(Color.cyan)
-                .lineStyle(StrokeStyle(lineWidth: 2))
-                .interpolationMethod(.catmullRom)
-
-                AreaMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("CPU", point.cpuPercent),
-                    series: .value("Metric", "CPU")
-                )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.cyan.opacity(0.2), Color.cyan.opacity(0.0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .interpolationMethod(.catmullRom)
-
-                LineMark(
-                    x: .value("Time", point.timestamp),
-                    y: .value("Memory", point.memoryPercent),
-                    series: .value("Metric", "RAM")
-                )
-                .foregroundStyle(Color.purple)
-                .lineStyle(StrokeStyle(lineWidth: 2))
-                .interpolationMethod(.catmullRom)
-            }
-            .chartYScale(domain: 0...100)
-            .chartXAxis(.hidden)
-            .chartYAxis {
-                AxisMarks(position: .leading, values: [0, 50, 100]) { value in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
-                        .foregroundStyle(Color.secondary.opacity(0.2))
-                    AxisValueLabel {
-                        if let intVal = value.as(Int.self) {
-                            Text("\(intVal)%").font(.system(size: 9)).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .frame(height: 110)
-        }
-        .padding(14)
-        .glassCard()
-    }
-
     // MARK: - Recommendations
 
     private func recommendationsSection(_ recommendations: [PerformanceRecommendation]) -> some View {
@@ -550,7 +222,7 @@ struct PerformanceView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Apps & High-Impact Processes (Click for Details & Actions)")
+                    Text("Apps & High-Impact Processes (Click to Inspect)")
                         .font(.headline)
                         .fontWeight(.bold)
                     Text("Ranked by cumulative CPU and RAM consumption during this session.")
@@ -595,7 +267,7 @@ struct PerformanceView: View {
                                     .foregroundStyle(.primary)
 
                                 if isSelected {
-                                    Pill(text: "Sedang Diperiksa", color: .blue)
+                                    Pill(text: "Inspecting", color: .blue)
                                 }
                             }
                             Text(info.description)
@@ -627,129 +299,6 @@ struct PerformanceView: View {
                 .buttonStyle(.plain)
             }
         }
-    }
-
-    // MARK: - Process List
-
-    private func processListSection(_ processes: [ProcessStats]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Label("All Active Processes", systemImage: "list.bullet.rectangle.portrait.fill")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-
-                Spacer()
-
-                HStack {
-                    Image(systemName: "magnifyingglass").font(.caption2).foregroundStyle(.secondary)
-                    TextField("Filter processes…", text: $vm.processSearchQuery)
-                        .textFieldStyle(.plain)
-                        .font(.caption)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.secondary.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .frame(width: 160)
-
-                Picker("Sort by", selection: $processSort) {
-                    ForEach(ProcessSort.allCases, id: \.self) { Text($0.rawValue) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 140)
-            }
-
-            ForEach(processes.prefix(20)) { process in
-                let info = AppInspector.friendlyInfo(for: process.name)
-                let isSelected = vm.inspectedApp?.appName.lowercased() == process.name.lowercased() ||
-                                 vm.inspectedApp?.appName.lowercased() == info.displayName.lowercased()
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        if isSelected {
-                            vm.send(.inspectApp(""))
-                        } else {
-                            vm.send(.inspectApp(process.name))
-                        }
-                    }
-                } label: {
-                    HStack(alignment: .center, spacing: 10) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(info.color.opacity(0.15))
-                                .frame(width: 24, height: 24)
-                            Image(systemName: info.icon)
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(info.color)
-                        }
-
-                        VStack(alignment: .leading, spacing: 1) {
-                            HStack(spacing: 6) {
-                                Text(info.displayName)
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                Text("PID: \(process.pid)")
-                                    .font(.system(size: 9, design: .monospaced))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            if let parent = process.parentAppName {
-                                Text("Belongs to \(parent)")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        Spacer()
-
-                        // Highlight according to selected sort mode
-                        if processSort == .cpu {
-                            Text("\(process.cpuPercent, specifier: "%.1f")% CPU")
-                                .font(.system(.caption, design: .monospaced))
-                                .fontWeight(.bold)
-                                .foregroundStyle(process.cpuPercent >= 40 ? .red : (process.cpuPercent >= 15 ? .orange : .primary))
-                                .frame(width: 85, alignment: .trailing)
-
-                            Text(ByteFormat.string(process.memoryBytes))
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 75, alignment: .trailing)
-                        } else {
-                            Text(ByteFormat.string(process.memoryBytes))
-                                .font(.system(.caption, design: .monospaced))
-                                .fontWeight(.bold)
-                                .foregroundStyle(process.memoryBytes >= 500 * 1024 * 1024 ? .blue : .primary)
-                                .frame(width: 85, alignment: .trailing)
-
-                            Text("\(process.cpuPercent, specifier: "%.1f")% CPU")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 75, alignment: .trailing)
-                        }
-
-                        Button {
-                            pendingKillPID = (process.pid, info.displayName)
-                        } label: {
-                            Image(systemName: "xmark.circle")
-                                .font(.caption)
-                                .foregroundStyle(.red.opacity(0.8))
-                        }
-                        .buttonStyle(.plain)
-                        .help("Terminate process (SIGTERM)")
-                    }
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 6)
-                    .background(isSelected ? Color.blue.opacity(0.08) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(16)
-        .glassCard()
     }
 
     private func color(for risk: LoadRisk) -> Color {

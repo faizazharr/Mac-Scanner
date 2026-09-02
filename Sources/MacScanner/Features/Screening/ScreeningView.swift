@@ -49,16 +49,9 @@ struct ScreeningView: View {
                     .padding(.vertical, 40)
                     .glassCard()
                 } else if let overview = engine.overview {
-                    // 1. Top Metric Tiles
                     topMetricsGrid(overview)
-
-                    // 2. Compact & Highly Informative Swift Charts Bar Chart
-                    usageStatisticsChartSection(overview.topAppsByUsage)
-
-                    // 3. Battery & Power Status Card
+                    ScreeningUsageChart(apps: overview.topAppsByUsage, chartMetric: $chartMetric)
                     batteryPowerBanner(overview)
-
-                    // 4. App Screening & Usage Ranking
                     appScreeningSection(filteredApps)
                 }
             }
@@ -69,146 +62,7 @@ struct ScreeningView: View {
         }
     }
 
-    // MARK: - Compact & Informative Swift Charts Section
-
-    private func usageStatisticsChartSection(_ apps: [AppUsageScreeningItem]) -> some View {
-        let chartData = Array(apps.prefix(7))
-        let totalHours = chartData.reduce(0.0) { $0 + $1.estimatedDailyHours }
-        let topApp = chartData.first?.name ?? "None"
-
-        return VStack(alignment: .leading, spacing: 12) {
-            // Header Row: Title & Segmented Metric Control
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chart.bar.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.purple)
-                        Text("Usage Statistics Chart")
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .lineLimit(1)
-                    }
-                    Text("Visual comparison of screen duration, power impact, and disk footprint.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 12)
-
-                Picker("Metric", selection: $chartMetric) {
-                    ForEach(ChartMetric.allCases, id: \.self) { m in
-                        Text(m.rawValue).tag(m)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(maxWidth: 300)
-            }
-
-            // Summary Badges Row (Prevents vertical character wrapping on resize)
-            HStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    Text("🏆 Top App:")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                    Text(topApp)
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.purple)
-                }
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.purple.opacity(0.12))
-                .clipShape(Capsule())
-
-                HStack(spacing: 4) {
-                    Text("⏱️ Total:")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                    Text(String(format: "%.1fh", totalHours))
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.blue)
-                }
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.blue.opacity(0.12))
-                .clipShape(Capsule())
-
-                Spacer()
-            }
-
-            Chart {
-                ForEach(chartData) { item in
-                    let value: Double = {
-                        switch chartMetric {
-                        case .hours: return item.estimatedDailyHours
-                        case .battery: return item.batteryPercentageImpact
-                        case .size: return Double(item.totalSizeBytes) / Double(1024 * 1024 * 1024)
-                        }
-                    }()
-
-                    let barColor: Color = {
-                        switch chartMetric {
-                        case .hours: return item.isRunning ? .purple : .blue
-                        case .battery: return item.batteryImpactLevel.color
-                        case .size: return .cyan
-                        }
-                    }()
-
-                    BarMark(
-                        x: .value("App", item.name),
-                        y: .value("Value", value)
-                    )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [barColor.opacity(0.6), barColor],
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
-                    )
-                    .cornerRadius(4)
-                    .annotation(position: .top) {
-                        Text(chartValueString(for: item, value: value))
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { _ in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
-                        .foregroundStyle(Color.secondary.opacity(0.2))
-                    AxisValueLabel()
-                        .font(.system(size: 8))
-                }
-            }
-            .chartXAxis {
-                AxisMarks(position: .bottom) { _ in
-                    AxisValueLabel()
-                        .font(.system(size: 9, weight: .medium))
-                }
-            }
-            .frame(height: 125)
-        }
-        .padding(12)
-        .glassCard(tint: .purple, opacity: 0.05)
-    }
-
-    private func chartValueString(for item: AppUsageScreeningItem, value: Double) -> String {
-        switch chartMetric {
-        case .hours:
-            return String(format: "%.1fh", value)
-        case .battery:
-            return "\(Int(value))%"
-        case .size:
-            return ByteFormat.string(item.totalSizeBytes)
-        }
-    }
+    // MARK: - Header & Metrics
 
     private var header: some View {
         HStack {
@@ -336,101 +190,16 @@ struct ScreeningView: View {
 
             if apps.isEmpty {
                 VStack(spacing: 8) {
-                    Image(systemName: "tray.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    Text("No applications match the selected filter.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "tray.fill").font(.title2).foregroundStyle(.secondary)
+                    Text("No applications match the selected filter.").font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
                 .glassCard()
             } else {
                 let maxHours = max(1.0, apps.map(\.estimatedDailyHours).max() ?? 1.0)
-
                 ForEach(apps) { item in
-                    let fraction = min(1.0, max(0.06, item.estimatedDailyHours / maxHours))
-
-                    HStack(spacing: 12) {
-                        Image(nsImage: item.icon)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 32, height: 32)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(item.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(.primary)
-
-                                if item.isRunning {
-                                    Pill(text: "Running", color: .green)
-                                }
-                            }
-
-                            Text(item.explanation)
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-
-                        Spacer()
-
-                        // Inline Visual Progress Meter
-                        VStack(alignment: .trailing, spacing: 3) {
-                            Text(String(format: "%.1f hrs / day", item.estimatedDailyHours))
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundStyle(item.isRunning ? Color.purple : Color.blue)
-
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(Color.secondary.opacity(0.12))
-                                    .frame(width: 84, height: 5)
-
-                                Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: item.isRunning ? [.purple, .indigo] : [.blue, .cyan],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .frame(width: 84 * CGFloat(fraction), height: 5)
-                            }
-                        }
-                        .frame(width: 95, alignment: .trailing)
-
-                        // Metrics (Size & Battery)
-                        HStack(spacing: 18) {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("Disk Size")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.tertiary)
-                                Text(ByteFormat.string(item.totalSizeBytes))
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .fontWeight(.semibold)
-                            }
-                            .frame(width: 70, alignment: .trailing)
-
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("Battery Impact")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.tertiary)
-                                HStack(spacing: 4) {
-                                    Image(systemName: item.batteryImpactLevel.icon)
-                                        .font(.system(size: 10))
-                                    Text(item.batteryImpactLevel.rawValue)
-                                        .font(.system(size: 11, weight: .bold))
-                                }
-                                .foregroundStyle(item.batteryImpactLevel.color)
-                            }
-                            .frame(width: 105, alignment: .trailing)
-                        }
-                    }
-                    .padding(12)
-                    .glassCard(tint: item.isRunning ? .purple : .secondary, opacity: item.isRunning ? 0.08 : 0.03)
+                    ScreeningAppRow(item: item, maxHours: maxHours)
                 }
             }
         }
@@ -440,9 +209,7 @@ struct ScreeningView: View {
         let totalHours = Int(seconds) / 3600
         let days = totalHours / 24
         let hours = totalHours % 24
-        if days > 0 {
-            return "\(days)d \(hours)h"
-        }
+        if days > 0 { return "\(days)d \(hours)h" }
         return "\(hours)h \(Int(seconds) % 3600 / 60)m"
     }
 

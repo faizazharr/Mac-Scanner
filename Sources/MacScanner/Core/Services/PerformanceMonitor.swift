@@ -5,8 +5,7 @@ import Foundation
 import Darwin
 import MachO
 
-/// How far a metric is from "everything's fine" — the shared traffic-light
-/// scale every gauge in the Performance tab reports against.
+/// Standard traffic-light scale for system resource pressure evaluation.
 enum LoadRisk: Int, Comparable {
     case ok = 0
     case warning = 1
@@ -20,21 +19,18 @@ enum ProcessSortMode: String, CaseIterable {
     case memory = "RAM"
 }
 
-/// A single running process, as reported by `ps`.
+/// A single running process snapshot.
 struct ProcessStats: Identifiable {
     let id = UUID()
     let pid: Int32
-    /// Full executable path, e.g. `/Applications/Docker.app/Contents/MacOS/Docker`.
     let fullCommand: String
     let cpuPercent: Double
     let memoryBytes: Int64
 
-    /// Last path component without extension — what a human calls this process.
     var name: String {
         URL(fileURLWithPath: fullCommand).deletingPathExtension().lastPathComponent
     }
 
-    /// The `.app` bundle this process actually belongs to, if any.
     var parentAppName: String? {
         let components = fullCommand.split(separator: "/")
         guard let appComponent = components.first(where: { $0.hasSuffix(".app") }) else { return nil }
@@ -43,7 +39,6 @@ struct ProcessStats: Identifiable {
         return appName == ownName ? nil : appName
     }
 
-    /// Clean, canonical human-readable application name (e.g. groups Chrome helpers into Google Chrome).
     var canonicalAppName: String {
         if let parent = parentAppName { return parent }
         let raw = name
@@ -59,7 +54,6 @@ struct ProcessStats: Identifiable {
         return raw
     }
 
-    /// Identifies internal macOS operating system daemons that are normal and shouldn't be blamed.
     var isSystemDaemon: Bool {
         let systemDaemons: Set<String> = [
             "WindowServer", "coreaudiod", "kernel_task", "launchd", "mds", "mds_stores",
@@ -78,7 +72,7 @@ struct ProcessStats: Identifiable {
     }
 }
 
-/// Curated list of apps known to run sustained CPU/GPU/RAM loads.
+/// Curated list of applications known to run sustained CPU/GPU/RAM workloads.
 enum HeavyAppCatalog {
     private static let patterns: [String] = [
         "docker", "xcode", "android studio", "qemu", "coresimulator",
@@ -95,7 +89,7 @@ enum HeavyAppCatalog {
     }
 }
 
-/// One row of the Performance tab's stable Recommendations section.
+/// One row of the Performance tab's stable recommendations section.
 struct PerformanceRecommendation: Identifiable {
     let id = UUID()
     let title: String
@@ -125,8 +119,7 @@ extension ProcessInfo.ThermalState {
     }
 }
 
-/// Reads live system load: memory, swap, CPU, thermal state, and the
-/// heaviest current processes via native Mach kernel calls (0 subprocess overhead).
+/// High-performance facade for system telemetry and process sampling.
 enum PerformanceMonitor {
 
     struct MemorySnapshot {
@@ -170,9 +163,9 @@ enum PerformanceMonitor {
             let totalRAM = max(Int64(memory.totalBytes), 8_000_000_000)
             let swapRatio = Double(swap.usedBytes) / Double(totalRAM)
             switch swapRatio {
-            case ..<0.25: return .ok        // Swap is < 25% of this Mac's RAM (e.g. < 2GB on 8GB Mac, < 4GB on 16GB, < 8GB on 32GB)
-            case ..<0.60: return .warning   // Swap is 25%–60% of this Mac's RAM
-            default: return .critical       // Swap exceeds 60% of physical RAM
+            case ..<0.25: return .ok
+            case ..<0.60: return .warning
+            default: return .critical
             }
         }
 
@@ -194,18 +187,10 @@ enum PerformanceMonitor {
             }
         }
 
-        /// Balanced, non-alarmist system health rating.
-        /// Proportional to each Mac's hardware capacity.
         var overallRisk: LoadRisk {
-            if thermalRisk == .critical {
-                return .critical // True hardware thermal throttling
-            }
-            if memoryRisk == .critical && swapRisk >= .warning {
-                return .critical // Severe physical RAM saturation
-            }
-            if cpuRisk == .critical && memoryRisk >= .warning {
-                return .critical // Dual CPU + RAM saturation
-            }
+            if thermalRisk == .critical { return .critical }
+            if memoryRisk == .critical && swapRisk >= .warning { return .critical }
+            if cpuRisk == .critical && memoryRisk >= .warning { return .critical }
             if memoryRisk == .warning || cpuRisk == .warning || swapRisk >= .warning || gpuRisk == .warning || thermalRisk == .warning {
                 return .warning
             }
@@ -214,12 +199,9 @@ enum PerformanceMonitor {
 
         var overallStatusLabel: String {
             switch overallRisk {
-            case .ok:
-                return "Optimal"
-            case .warning:
-                return "Busy"
-            case .critical:
-                return thermalRisk == .critical ? "Throttled" : "Heavy Load"
+            case .ok: return "Optimal"
+            case .warning: return "Busy"
+            case .critical: return thermalRisk == .critical ? "Throttled" : "Heavy Load"
             }
         }
 
@@ -236,7 +218,7 @@ enum PerformanceMonitor {
         }
 
         var notableMemoryThreshold: Int64 {
-            max(500_000_000, Int64(Double(memory.totalBytes) * 0.08)) // 8% of this Mac's RAM or 500MB
+            max(500_000_000, Int64(Double(memory.totalBytes) * 0.08))
         }
 
         var memoryAdvice: String? {
@@ -284,17 +266,13 @@ enum PerformanceMonitor {
 
             switch thermalState {
             case .critical:
-                if isFanless {
-                    return "Thermal regulation active. Fanless MacBook Air automatically throttles clock speeds to keep chassis temperatures safe."
-                } else {
-                    return "Thermal throttling active. Cooling fans are at maximum; ensure table airflow and air vents are unobstructed."
-                }
+                return isFanless
+                    ? "Thermal regulation active. Fanless MacBook Air automatically throttles clock speeds to keep chassis temperatures safe."
+                    : "Thermal throttling active. Cooling fans are at maximum; ensure table airflow and air vents are unobstructed."
             default:
-                if isFanless {
-                    return "Elevated chassis temperature under heavy load. Expected and safe on fanless Mac laptops."
-                } else {
-                    return "Elevated system temperature under active workload. Cooling fans are actively managing heat dissipation."
-                }
+                return isFanless
+                    ? "Elevated chassis temperature under heavy load. Expected and safe on fanless Mac laptops."
+                    : "Elevated system temperature under active workload. Cooling fans are actively managing heat dissipation."
             }
         }
 
@@ -332,8 +310,6 @@ enum PerformanceMonitor {
         }
     }
 
-    private static var previousCPUTicks: (user: UInt32, sys: UInt32, idle: UInt32, nice: UInt32)?
-
     /// Captures a live snapshot using Mach kernel APIs and a single-pass process inspection.
     static func capture(processLimit: Int = 25) -> Snapshot {
         let allProcesses = fetchAllProcesses()
@@ -341,106 +317,23 @@ enum PerformanceMonitor {
         let byMem = Array(allProcesses.sorted { $0.memoryBytes > $1.memoryBytes }.prefix(processLimit))
 
         return Snapshot(
-            memory: memorySnapshot(),
-            swap: swapSnapshot(),
-            cpuPercent: systemCPUPercent(),
-            gpuPercent: systemGPUPercent(),
+            memory: MachTelemetryProvider.memorySnapshot(),
+            swap: MachTelemetryProvider.swapSnapshot(),
+            cpuPercent: MachTelemetryProvider.systemCPUPercent(),
+            gpuPercent: GPUAcceleratorProvider.queryGPUUtilizationPercent(),
             thermalState: ProcessInfo.processInfo.thermalState,
             topProcesses: byCPU,
             topProcessesByMemory: byMem
         )
     }
 
+    static func sysctlString(_ name: String) -> String {
+        MachTelemetryProvider.sysctlString(name)
+    }
+
     static func terminateProcess(pid: Int32) -> Bool {
         guard pid > 0 else { return false }
-        let result = kill(pid, SIGTERM)
-        return result == 0
-    }
-
-    // MARK: - Native Mach Kernel Telemetry (0 Subprocess Overhead)
-
-    /// Reads Memory usage directly from Mach kernel `host_statistics64` (HOST_VM_INFO64).
-    private static func memorySnapshot() -> MemorySnapshot {
-        let total = Int64(ProcessInfo.processInfo.physicalMemory)
-        var vmStats = vm_statistics64()
-        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
-
-        let kerr = withUnsafeMutablePointer(to: &vmStats) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
-            }
-        }
-
-        guard kerr == KERN_SUCCESS else {
-            return MemorySnapshot(totalBytes: total, usedBytes: 0)
-        }
-
-        let pageSize = Int64(vm_kernel_page_size)
-        let active = Int64(vmStats.active_count)
-        let wired = Int64(vmStats.wire_count)
-        let compressorOccupied = Int64(vmStats.compressor_page_count)
-        let used = (active + wired + compressorOccupied) * pageSize
-
-        return MemorySnapshot(totalBytes: total, usedBytes: min(used, total))
-    }
-
-    /// Reads string properties via C `sysctlbyname`.
-    static func sysctlString(_ name: String) -> String {
-        var size = 0
-        sysctlbyname(name, nil, &size, nil, 0)
-        guard size > 0 else { return "" }
-        var buffer = [CChar](repeating: 0, count: size)
-        sysctlbyname(name, &buffer, &size, nil, 0)
-        return String(cString: buffer)
-    }
-
-    /// Reads Swap usage directly via C `sysctlbyname("vm.swapusage")`.
-    private static func swapSnapshot() -> SwapSnapshot {
-        var swap = xsw_usage()
-        var size = MemoryLayout<xsw_usage>.size
-        let result = sysctlbyname("vm.swapusage", &swap, &size, nil, 0)
-        guard result == 0 else {
-            return SwapSnapshot(totalBytes: 0, usedBytes: 0)
-        }
-        return SwapSnapshot(totalBytes: Int64(swap.xsu_total), usedBytes: Int64(swap.xsu_used))
-    }
-
-    /// Reads CPU load directly from Mach kernel `host_statistics` (HOST_CPU_LOAD_INFO).
-    private static func systemCPUPercent() -> Double {
-        var cpuLoadInfo = host_cpu_load_info()
-        var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info>.size / MemoryLayout<integer_t>.size)
-
-        let kerr = withUnsafeMutablePointer(to: &cpuLoadInfo) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, $0, &count)
-            }
-        }
-
-        guard kerr == KERN_SUCCESS else { return 0 }
-
-        let user = cpuLoadInfo.cpu_ticks.0
-        let sys = cpuLoadInfo.cpu_ticks.1
-        let idle = cpuLoadInfo.cpu_ticks.2
-        let nice = cpuLoadInfo.cpu_ticks.3
-
-        defer {
-            previousCPUTicks = (user, sys, idle, nice)
-        }
-
-        guard let prev = previousCPUTicks else {
-            return 0
-        }
-
-        let userDiff = Double(user.subtractingReportingOverflow(prev.user).partialValue)
-        let sysDiff = Double(sys.subtractingReportingOverflow(prev.sys).partialValue)
-        let idleDiff = Double(idle.subtractingReportingOverflow(prev.idle).partialValue)
-        let niceDiff = Double(nice.subtractingReportingOverflow(prev.nice).partialValue)
-
-        let totalDiff = userDiff + sysDiff + idleDiff + niceDiff
-        guard totalDiff > 0 else { return 0 }
-
-        let activeDiff = userDiff + sysDiff + niceDiff
-        return min(max((activeDiff / totalDiff) * 100.0, 0), 100.0)
+        return kill(pid, SIGTERM) == 0
     }
 
     /// Single-pass process list fetch via `ps` (only 1 lightweight process execution per tick).
@@ -464,14 +357,5 @@ enum PerformanceMonitor {
             )
         }
         return results
-    }
-
-    private static func systemGPUPercent() -> Double? {
-        let output = Shell.run("/usr/sbin/ioreg", ["-r", "-c", "IOAccelerator", "-d", "1"])
-        guard let match = output.range(of: #""Device Utilization %"=(\d+)"#, options: .regularExpression) else {
-            return nil
-        }
-        let digits = output[match].filter(\.isNumber)
-        return digits.isEmpty ? nil : Double(digits)
     }
 }
