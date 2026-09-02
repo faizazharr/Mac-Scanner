@@ -179,13 +179,13 @@ For detailed developer workflows and release standards, see [**`CONTRIBUTING.md`
 
 ---
 
-## ☕ Support & Donation (Donasi)
+## ☕ Support & Donations
 
-MacScanner adalah proyek open-source yang sepenuhnya gratis, bebas iklan, dan bebas telemetri. Jika aplikasi ini membantu Anda merawat, membersihkan, atau memeriksa performa Mac Anda, Anda dapat memberikan apresiasi dan dukungan pengembangan lebih lanjut melalui:
+MacScanner is a 100% free, ad-free, and telemetry-free open-source project. If MacScanner helps you maintain, optimize, diagnose, or free up valuable storage on your Mac, please consider supporting ongoing development and maintenance:
 
 <p align="center">
   <a href="https://saweria.co/izarakuro">
-    <img src="https://img.shields.io/badge/Donasi%20via-Saweria%20(Indonesia)-orange?style=for-the-badge&logo=coffeescript&logoColor=white" alt="Donasi via Saweria" height="40">
+    <img src="https://img.shields.io/badge/Donate%20via-Saweria%20(Indonesia)-orange?style=for-the-badge&logo=coffeescript&logoColor=white" alt="Donate via Saweria" height="40">
   </a>
   &nbsp;&nbsp;
   <a href="https://ko-fi.com/izarakuro">
@@ -193,10 +193,10 @@ MacScanner adalah proyek open-source yang sepenuhnya gratis, bebas iklan, dan be
   </a>
 </p>
 
-- 🇮🇩 **Donasi Lokal (Indonesia)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro) *(Mendukung QRIS, GoPay, OVO, DANA, LinkAja, ShopeePay)*
-- 🌍 **International Donation**: [**https://ko-fi.com/izarakuro**](https://ko-fi.com/izarakuro) *(Supports PayPal, Credit/Debit Cards, Apple Pay, Google Pay)*
+- 🇮🇩 **Local Indonesia (Saweria)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro) *(Supports QRIS, GoPay, OVO, DANA, LinkAja, ShopeePay)*
+- 🌍 **International (Ko-fi)**: [**https://ko-fi.com/izarakuro**](https://ko-fi.com/izarakuro) *(Supports PayPal, Credit/Debit Cards, Apple Pay, Google Pay)*
 
-Setiap donasi sangat berarti untuk membantu keberlanjutan pengembangan fitur, riset hardware Apple Silicon/Intel terbaru, dan pemeliharaan repository open-source ini. Terima kasih banyak atas dukungan Anda! 🙏
+Every contribution directly supports new feature development, testing across latest Apple Silicon & Intel hardware, and keeping this project open-source and privacy-focused. Thank you for your support! 🙏
 
 ---
 

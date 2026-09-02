@@ -151,6 +151,6 @@ Thank you for helping keep MacScanner fast, safe, and beautiful! 🍏✨
 ## ☕ Support the Project
 
 If you love MacScanner and want to support its open-source development and maintenance:
-- 🇮🇩 **Donasi Lokal (Indonesia)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro)
-- 🌍 **International Donation**: [**https://ko-fi.com/izarakuro**](https://ko-fi.com/izarakuro)
+- 🇮🇩 **Local Indonesia (Saweria)**: [**https://saweria.co/izarakuro**](https://saweria.co/izarakuro)
+- 🌍 **International (Ko-fi)**: [**https://ko-fi.com/izarakuro**](https://ko-fi.com/izarakuro)
 
