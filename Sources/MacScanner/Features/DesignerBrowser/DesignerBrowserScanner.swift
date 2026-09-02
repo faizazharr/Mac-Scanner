@@ -408,26 +408,28 @@ enum DesignerBrowserScanner {
         return insights
     }
 
+    private struct BrowserExtensionURLMap {
+        let appName: String
+        let url: String
+        let tint: Color
+    }
+
+    private static let browserPages: [(key: String, map: BrowserExtensionURLMap)] = [
+        ("chrome", BrowserExtensionURLMap(appName: "Google Chrome", url: "chrome://extensions/", tint: .blue)),
+        ("arc", BrowserExtensionURLMap(appName: "Arc", url: "arc://extensions/", tint: .purple)),
+        ("brave", BrowserExtensionURLMap(appName: "Brave Browser", url: "brave://extensions/", tint: .orange)),
+        ("edge", BrowserExtensionURLMap(appName: "Microsoft Edge", url: "edge://extensions/", tint: .cyan)),
+        ("firefox", BrowserExtensionURLMap(appName: "Firefox", url: "about:addons", tint: .red))
+    ]
+
     /// Opens the official in-browser Extension Management page (chrome://extensions/, arc://extensions/, etc.)
     /// directly in the browser so the user can easily toggle off or remove extensions with 1 click.
     @MainActor
     static func openBrowserExtensionPage(browserName: String) {
         let lower = browserName.lowercased()
-        if lower.contains("chrome") {
-            _ = Shell.run("/usr/bin/open", ["-a", "Google Chrome", "chrome://extensions/"])
-            ToastManager.shared.show("Opening extensions page in Google Chrome", icon: "puzzlepiece.extension.fill", tint: .blue)
-        } else if lower.contains("arc") {
-            _ = Shell.run("/usr/bin/open", ["-a", "Arc", "arc://extensions/"])
-            ToastManager.shared.show("Opening extensions page in Arc", icon: "puzzlepiece.extension.fill", tint: .purple)
-        } else if lower.contains("brave") {
-            _ = Shell.run("/usr/bin/open", ["-a", "Brave Browser", "brave://extensions/"])
-            ToastManager.shared.show("Opening extensions page in Brave", icon: "puzzlepiece.extension.fill", tint: .orange)
-        } else if lower.contains("edge") {
-            _ = Shell.run("/usr/bin/open", ["-a", "Microsoft Edge", "edge://extensions/"])
-            ToastManager.shared.show("Opening extensions page in Microsoft Edge", icon: "puzzlepiece.extension.fill", tint: .cyan)
-        } else if lower.contains("firefox") {
-            _ = Shell.run("/usr/bin/open", ["-a", "Firefox", "about:addons"])
-            ToastManager.shared.show("Opening add-ons page in Firefox", icon: "puzzlepiece.extension.fill", tint: .red)
+        if let match = browserPages.first(where: { lower.contains($0.key) }) {
+            _ = Shell.run("/usr/bin/open", ["-a", match.map.appName, match.map.url])
+            ToastManager.shared.show("Opening extensions page in \(match.map.appName)", icon: "puzzlepiece.extension.fill", tint: match.map.tint)
         } else {
             _ = Shell.run("/usr/bin/open", ["https://support.apple.com/guide/safari/safari-extensions-sfri32508/mac"])
         }

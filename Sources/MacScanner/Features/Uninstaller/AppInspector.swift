@@ -136,71 +136,49 @@ enum AppInspector {
         )
     }
 
+    private struct FriendlyAppEntry {
+        let keyword: String
+        let displayName: String
+        let description: String
+        let icon: String
+        let color: Color
+        let isExact: Bool
+    }
+
+    private static let knownAppsCatalog: [FriendlyAppEntry] = [
+        FriendlyAppEntry(keyword: "du", displayName: "Disk Usage Scanner (du)", description: "Native macOS process calculating file and folder sizes on disk during scans.", icon: "externaldrive.badge.timemachine", color: .blue, isExact: true),
+        FriendlyAppEntry(keyword: "find", displayName: "File Search Indexer (find)", description: "Native macOS process locating files and directory structures on disk.", icon: "doc.text.magnifyingglass", color: .teal, isExact: true),
+        FriendlyAppEntry(keyword: "mds", displayName: "Spotlight Search Indexer (mds)", description: "Native macOS background indexing daemon for Spotlight search queries.", icon: "sparkle.magnifyingglass", color: .indigo, isExact: false),
+        FriendlyAppEntry(keyword: "cloudd", displayName: "iCloud Drive Sync (cloudd)", description: "macOS background daemon synchronizing files with iCloud Drive.", icon: "icloud.fill", color: .blue, isExact: false),
+        FriendlyAppEntry(keyword: "syspolicyd", displayName: "Gatekeeper Security (syspolicyd)", description: "macOS security subsystem verifying application codesigning and integrity.", icon: "shield.checkerboard", color: .green, isExact: false),
+        FriendlyAppEntry(keyword: "kernel_task", displayName: "macOS Core Kernel (kernel_task)", description: "Core macOS operating system managing RAM, CPU scheduler, and thermal regulation.", icon: "cpu.fill", color: .gray, isExact: true),
+        FriendlyAppEntry(keyword: "windowserver", displayName: "macOS Graphics Compositor (WindowServer)", description: "macOS display compositor rendering windows, blur effects, and external displays.", icon: "macwindow.on.rectangle", color: .purple, isExact: true),
+        FriendlyAppEntry(keyword: "git", displayName: "Git Version Control (git)", description: "Developer tool tracking source code changes and repository history.", icon: "arrow.triangle.branch", color: .orange, isExact: true),
+        FriendlyAppEntry(keyword: "antigravity", displayName: "Google Antigravity Assistant", description: "AI pair programming assistant currently running tasks on your Mac.", icon: "sparkles", color: .purple, isExact: false),
+        FriendlyAppEntry(keyword: "chrome", displayName: "Google Chrome", description: "Google Chrome web browser, active web tabs, and extensions.", icon: "globe", color: .blue, isExact: false),
+        FriendlyAppEntry(keyword: "figma", displayName: "Figma Desktop", description: "Cloud-based UI/UX vector design editor and canvas rendering engine.", icon: "paintbrush.pointed.fill", color: .pink, isExact: false),
+        FriendlyAppEntry(keyword: "xcode", displayName: "Xcode IDE", description: "Apple integrated development environment (compilers, simulators, and indexers).", icon: "hammer.fill", color: .cyan, isExact: false),
+        FriendlyAppEntry(keyword: "arc", displayName: "Arc Browser", description: "Arc web browser workspaces, active tabs, and extensions.", icon: "globe", color: .purple, isExact: false),
+        FriendlyAppEntry(keyword: "brave", displayName: "Brave Browser", description: "Privacy-focused Brave web browser and shield engine.", icon: "globe", color: .orange, isExact: false),
+        FriendlyAppEntry(keyword: "safari", displayName: "Safari Web Browser", description: "Apple native WebKit browser and active tab contents.", icon: "safari.fill", color: .blue, isExact: false),
+        FriendlyAppEntry(keyword: "webcontent", displayName: "Safari Web Content", description: "WebKit isolated web renderer process.", icon: "safari.fill", color: .blue, isExact: false),
+        FriendlyAppEntry(keyword: "spotify", displayName: "Spotify Music", description: "Streaming music player and podcast audio daemon.", icon: "music.note", color: .green, isExact: false),
+        FriendlyAppEntry(keyword: "slack", displayName: "Slack", description: "Team collaboration and workplace messaging client.", icon: "bubble.left.and.bubble.right.fill", color: .yellow, isExact: false),
+        FriendlyAppEntry(keyword: "photoshop", displayName: "Adobe Photoshop", description: "Professional raster graphics editor and image manipulation suite.", icon: "paintbrush.pointed.fill", color: .blue, isExact: false),
+        FriendlyAppEntry(keyword: "premiere", displayName: "Adobe Premiere Pro", description: "Non-linear professional video editing suite.", icon: "film.stack.fill", color: .purple, isExact: false),
+        FriendlyAppEntry(keyword: "after effects", displayName: "Adobe After Effects", description: "Digital visual effects, motion graphics, and compositing application.", icon: "sparkles.tv.fill", color: .purple, isExact: false),
+        FriendlyAppEntry(keyword: "docker", displayName: "Docker Desktop", description: "Container virtualization engine and local development runtime.", icon: "shippingbox.fill", color: .blue, isExact: false)
+    ]
+
     static func friendlyInfo(for raw: String) -> (displayName: String, description: String, icon: String, color: Color) {
         let lower = raw.lowercased()
-        if lower == "du" || lower.hasPrefix("du ") {
-            return ("Disk Usage Scanner (du)", "Native macOS process calculating file and folder sizes on disk during scans.", "externaldrive.badge.timemachine", .blue)
+
+        if let match = knownAppsCatalog.first(where: { entry in
+            entry.isExact ? (lower == entry.keyword || lower.hasPrefix(entry.keyword + " ")) : lower.contains(entry.keyword)
+        }) {
+            return (match.displayName, match.description, match.icon, match.color)
         }
-        if lower == "find" || lower.hasPrefix("find ") {
-            return ("File Search Indexer (find)", "Native macOS process locating files and directory structures on disk.", "doc.text.magnifyingglass", .teal)
-        }
-        if lower == "mds" || lower == "mdworker" || lower.contains("mdworker") || lower == "mds_stores" {
-            return ("Spotlight Search Indexer (mds)", "Native macOS background indexing daemon for Spotlight search queries.", "sparkle.magnifyingglass", .indigo)
-        }
-        if lower == "cloudd" || lower == "bird" {
-            return ("iCloud Drive Sync (cloudd)", "macOS background daemon synchronizing files with iCloud Drive.", "icloud.fill", .blue)
-        }
-        if lower == "syspolicyd" || lower == "trustd" {
-            return ("Gatekeeper Security (syspolicyd)", "macOS security subsystem verifying application codesigning and integrity.", "shield.checkerboard", .green)
-        }
-        if lower == "kernel_task" {
-            return ("macOS Core Kernel (kernel_task)", "Core macOS operating system managing RAM, CPU scheduler, and thermal regulation.", "cpu.fill", .gray)
-        }
-        if lower == "windowserver" {
-            return ("macOS Graphics Compositor (WindowServer)", "macOS display compositor rendering windows, blur effects, and external displays.", "macwindow.on.rectangle", .purple)
-        }
-        if lower == "git" {
-            return ("Git Version Control (git)", "Developer tool tracking source code changes and repository history.", "arrow.triangle.branch", .orange)
-        }
-        if lower.contains("antigravity") {
-            return ("Google Antigravity Assistant", "AI pair programming assistant currently running tasks on your Mac.", "sparkles", .purple)
-        }
-        if lower.contains("chrome") {
-            return ("Google Chrome", "Google Chrome web browser, active web tabs, and extensions.", "globe", .blue)
-        }
-        if lower.contains("figma") {
-            return ("Figma Desktop", "Cloud-based UI/UX vector design editor and canvas rendering engine.", "paintbrush.pointed.fill", .pink)
-        }
-        if lower.contains("xcode") {
-            return ("Xcode IDE", "Apple integrated development environment (compilers, simulators, and indexers).", "hammer.fill", .cyan)
-        }
-        if lower.contains("arc") {
-            return ("Arc Browser", "Arc web browser workspaces, active tabs, and extensions.", "globe", .purple)
-        }
-        if lower.contains("brave") {
-            return ("Brave Browser", "Privacy-focused Brave web browser and shield engine.", "globe", .orange)
-        }
-        if lower.contains("safari") || lower.contains("webcontent") {
-            return ("Safari Web Browser", "Apple native WebKit browser and active tab contents.", "safari.fill", .blue)
-        }
-        if lower.contains("spotify") {
-            return ("Spotify Music", "Streaming music player and podcast audio daemon.", "music.note", .green)
-        }
-        if lower.contains("slack") {
-            return ("Slack", "Team collaboration and workplace messaging client.", "bubble.left.and.bubble.right.fill", .yellow)
-        }
-        if lower.contains("photoshop") {
-            return ("Adobe Photoshop", "Professional raster graphics editor and image manipulation suite.", "paintbrush.pointed.fill", .blue)
-        }
-        if lower.contains("premiere") {
-            return ("Adobe Premiere Pro", "Non-linear professional video editing suite.", "film.stack.fill", .purple)
-        }
-        if lower.contains("after effects") {
-            return ("Adobe After Effects", "Digital visual effects, motion graphics, and compositing application.", "sparkles.tv.fill", .purple)
-        }
-        if lower.contains("docker") {
-            return ("Docker Desktop", "Container virtualization engine and local development runtime.", "shippingbox.fill", .blue)
-        }
+
         return (raw, "User application or native macOS background process.", "app.dashed", .accentColor)
     }
 
@@ -237,37 +215,27 @@ enum AppInspector {
         let fm = FileManager.default
 
         let lower = appName.lowercased()
-        if lower.contains("chrome") {
-            let cacheURL = caches.appendingPathComponent("Google/Chrome")
-            let extURL = appSupport.appendingPathComponent("Google/Chrome/Default/Extensions")
+
+        struct AppPathConfig {
+            let cache: URL
+            let extensions: URL?
+        }
+
+        let configs: [(keyword: String, config: AppPathConfig)] = [
+            ("chrome", AppPathConfig(cache: caches.appendingPathComponent("Google/Chrome"), extensions: appSupport.appendingPathComponent("Google/Chrome/Default/Extensions"))),
+            ("figma", AppPathConfig(cache: appSupport.appendingPathComponent("Figma"), extensions: nil)),
+            ("xcode", AppPathConfig(cache: lib.appendingPathComponent("Developer/Xcode/DerivedData"), extensions: nil)),
+            ("arc", AppPathConfig(cache: caches.appendingPathComponent("company.thebrowser.Browser"), extensions: appSupport.appendingPathComponent("Arc/User Data/Default/Extensions"))),
+            ("brave", AppPathConfig(cache: caches.appendingPathComponent("BraveSoftware/Brave-Browser"), extensions: appSupport.appendingPathComponent("BraveSoftware/Brave-Browser/Default/Extensions"))),
+            ("after effects", AppPathConfig(cache: caches.appendingPathComponent("Adobe/After Effects"), extensions: nil)),
+            ("photoshop", AppPathConfig(cache: appSupport.appendingPathComponent("Adobe/Common"), extensions: nil)),
+            ("premiere", AppPathConfig(cache: appSupport.appendingPathComponent("Adobe/Common"), extensions: nil))
+        ]
+
+        if let matched = configs.first(where: { lower.contains($0.keyword) }) {
+            let cacheURL = matched.config.cache
             let size = fm.fileExists(atPath: cacheURL.path) ? cachedDiskSize(of: cacheURL) : 0
-            return (size, cacheURL, extURL)
-        } else if lower.contains("figma") {
-            let cacheURL = appSupport.appendingPathComponent("Figma")
-            let size = fm.fileExists(atPath: cacheURL.path) ? cachedDiskSize(of: cacheURL) : 0
-            return (size, cacheURL, nil)
-        } else if lower.contains("xcode") {
-            let cacheURL = lib.appendingPathComponent("Developer/Xcode/DerivedData")
-            let size = fm.fileExists(atPath: cacheURL.path) ? cachedDiskSize(of: cacheURL) : 0
-            return (size, cacheURL, nil)
-        } else if lower.contains("arc") {
-            let cacheURL = caches.appendingPathComponent("company.thebrowser.Browser")
-            let extURL = appSupport.appendingPathComponent("Arc/User Data/Default/Extensions")
-            let size = fm.fileExists(atPath: cacheURL.path) ? cachedDiskSize(of: cacheURL) : 0
-            return (size, cacheURL, extURL)
-        } else if lower.contains("brave") {
-            let cacheURL = caches.appendingPathComponent("BraveSoftware/Brave-Browser")
-            let extURL = appSupport.appendingPathComponent("BraveSoftware/Brave-Browser/Default/Extensions")
-            let size = fm.fileExists(atPath: cacheURL.path) ? cachedDiskSize(of: cacheURL) : 0
-            return (size, cacheURL, extURL)
-        } else if lower.contains("after effects") {
-            let cacheURL = caches.appendingPathComponent("Adobe/After Effects")
-            let size = fm.fileExists(atPath: cacheURL.path) ? cachedDiskSize(of: cacheURL) : 0
-            return (size, cacheURL, nil)
-        } else if lower.contains("photoshop") || lower.contains("premiere") {
-            let cacheURL = appSupport.appendingPathComponent("Adobe/Common")
-            let size = fm.fileExists(atPath: cacheURL.path) ? cachedDiskSize(of: cacheURL) : 0
-            return (size, cacheURL, nil)
+            return (size, cacheURL, matched.config.extensions)
         }
 
         return (0, nil, nil)
