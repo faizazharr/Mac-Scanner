@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/macOS-13.0%2B%20(Ventura%20|%20Sonoma%20|%20Sequoia)-black?style=flat-square&logo=apple" alt="macOS Version">
   <img src="https://img.shields.io/badge/Architecture-Universal%202%20(arm64%20+%20x86__64)-blue?style=flat-square" alt="Universal Architecture">
   <img src="https://img.shields.io/badge/Language-100%25%20Swift%206%20/%20SwiftUI-orange?style=flat-square&logo=swift" alt="Swift 6">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
+  <img src="https://img.shields.io/badge/License-Copyright%20(All%20Rights%20Reserved)-blue?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Privacy-100%25%20On--Device%20(Zero%20Telemetry)-success?style=flat-square&logo=shield" alt="Zero Telemetry">
   <img src="https://img.shields.io/badge/Installer%20Size-1.7%20MB%20DMG-purple?style=flat-square" alt="Lightweight">
   <a href="https://saweria.co/izarakuro"><img src="https://img.shields.io/badge/Support-Saweria-orange?style=flat-square&logo=coffeescript&logoColor=white" alt="Support on Saweria"></a>
@@ -202,6 +202,6 @@ Every contribution directly supports new feature development, testing across lat
 
 ## 📄 License & Copyright
 
-MacScanner is open-source software released under the **[MIT License](LICENSE)**.
+MacScanner is source-available software provided under **[All Rights Reserved / Proprietary License](LICENSE)** for personal, non-commercial use.
 
 Copyright © 2026 **Faiz Azhar Ristya Nugraha**. All rights reserved.
