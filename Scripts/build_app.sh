@@ -6,12 +6,13 @@ cd "$(dirname "$0")/.."
 
 CONFIG="${1:-release}"
 if [ "$CONFIG" = "release" ]; then
-    swift build -c release -Xswiftc -Osize -Xswiftc -whole-module-optimization
+    echo "==> Compiling Universal 2 Binary (arm64 + x86_64) with size optimization..."
+    swift build -c release --arch arm64 --arch x86_64 -Xswiftc -Osize -Xswiftc -whole-module-optimization
+    BIN_PATH=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/MacScanner
 else
     swift build -c "$CONFIG"
+    BIN_PATH=$(swift build -c "$CONFIG" --show-bin-path)/MacScanner
 fi
-
-BIN_PATH=$(swift build -c "$CONFIG" --show-bin-path)/MacScanner
 
 APP_DIR="build/MacScanner.app"
 rm -rf "$APP_DIR"
