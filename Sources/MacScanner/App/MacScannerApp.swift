@@ -24,16 +24,10 @@ struct MacScannerApp: App {
     static let mainWindowID = "main"
 
     var body: some Scene {
-        WindowGroup(id: Self.mainWindowID) {
+        Window("MacScanner", id: Self.mainWindowID) {
             ContentView(deviceVM: deviceVM, performanceVM: performanceVM)
                 .frame(minWidth: 1040, minHeight: 600)
         }
-        // `.contentSize` locks window resizing to the content's *preferred*
-        // size — fine for manual drag-resizing, but fullscreen is an
-        // OS-driven resize to the screen's actual dimensions, which the
-        // content never requested. That mismatch left a black gap where the
-        // title bar used to be. `.automatic` lets the window (and its
-        // content) resize freely to whatever size it's actually given.
         .windowResizability(.automatic)
 
         MenuBarExtra {

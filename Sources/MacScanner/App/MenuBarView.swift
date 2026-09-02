@@ -195,11 +195,12 @@ struct MenuBarContentView: View {
     }
 
     private func openMainWindow() {
-        if let window = NSApp.windows.first(where: { $0.canBecomeKey }) {
+        if let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) {
             window.makeKeyAndOrderFront(nil)
+            window.deminiaturize(nil)
             NSApp.activate(ignoringOtherApps: true)
         } else {
-            openWindow(id: "main")
+            openWindow(id: MacScannerApp.mainWindowID)
             NSApp.activate(ignoringOtherApps: true)
         }
     }
