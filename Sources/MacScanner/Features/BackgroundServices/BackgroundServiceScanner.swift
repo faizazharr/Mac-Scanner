@@ -244,7 +244,7 @@ enum BackgroundServiceScanner {
 
             if let execPath, let appBundle = appBundle(containingExecutable: URL(fileURLWithPath: execPath)) {
                 let name = bundleDisplayName(at: appBundle)
-                let icon = NSWorkspace.shared.icon(forFile: appBundle.path)
+                let icon = bundleHasCustomIcon(at: appBundle) ? AppIconCache.shared.icon(for: appBundle.path) : nil
                 return ResolvedOwner(
                     displayName: serviceDisplayName(from: label),
                     ownerApp: name,
@@ -256,7 +256,7 @@ enum BackgroundServiceScanner {
         // ── Strategy 2: label as bundle ID → NSWorkspace lookup ─────────────
         if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: label) {
             let name = bundleDisplayName(at: appURL)
-            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            let icon = bundleHasCustomIcon(at: appURL) ? AppIconCache.shared.icon(for: appURL.path) : nil
             return ResolvedOwner(displayName: serviceDisplayName(from: label), ownerApp: name, icon: icon)
         }
 
@@ -265,7 +265,7 @@ enum BackgroundServiceScanner {
         if parentID.count > 4,
            let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: parentID) {
             let name = bundleDisplayName(at: appURL)
-            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            let icon = bundleHasCustomIcon(at: appURL) ? AppIconCache.shared.icon(for: appURL.path) : nil
             return ResolvedOwner(displayName: serviceDisplayName(from: label), ownerApp: name, icon: icon)
         }
 
@@ -287,6 +287,20 @@ enum BackgroundServiceScanner {
             current = parent
         }
         return nil
+    }
+
+    /// Many system-owned helper bundles (WindowManager.app, NotificationCenter.app,
+    /// etc.) have no `CFBundleIconFile`/`CFBundleIconName` at all. `NSWorkspace.icon(forFile:)`
+    /// still returns *something* for them — macOS's generic blank-document icon — which
+    /// rendered as an empty white box in the row instead of the intended gearshape
+    /// fallback. Checking for a declared icon key first lets those cases fall through
+    /// to `icon: nil` so the row's existing fallback kicks in consistently.
+    private static func bundleHasCustomIcon(at bundleURL: URL) -> Bool {
+        let infoPlist = bundleURL.appendingPathComponent("Contents/Info.plist")
+        guard let dict = NSDictionary(contentsOf: infoPlist) as? [String: Any] else { return false }
+        if let file = dict["CFBundleIconFile"] as? String, !file.isEmpty { return true }
+        if let name = dict["CFBundleIconName"] as? String, !name.isEmpty { return true }
+        return false
     }
 
     /// Reads `CFBundleDisplayName` → `CFBundleName` → last path component from a bundle URL.

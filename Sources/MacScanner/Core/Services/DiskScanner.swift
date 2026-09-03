@@ -3,19 +3,55 @@
 
 import Foundation
 
-/// All filesystem-scanning primitives with Zero-Subprocess file sizing and
-/// thread-safe in-memory caching for directories.
+/// All filesystem-scanning primitives with genuinely zero-subprocess sizing
+/// (files *and* directories) and thread-safe in-memory caching.
 enum DiskScanner {
     private static var sizeCache: [String: (size: Int64, timestamp: Date)] = [:]
     private static let sizeCacheLock = NSLock()
+    /// A stale entry was previously only *ignored* on read, never removed —
+    /// every distinct directory path sized in a session (Folder Browser,
+    /// Recommendations, App Uninstaller's ~370 candidate paths, Screening,
+    /// Designer & Browsers) stayed in the dictionary forever. Pruned back to
+    /// `maxCacheEntries` once the count exceeds `pruneTriggerEntries`.
+    ///
+    /// The gap between the two matters: pruning sorts every entry by
+    /// timestamp, which isn't free. Triggering it right at the cap (prune to
+    /// 1000, next insert hits 1001, prune again) means paying that sort cost
+    /// on nearly *every single call* once the cache is full — with several
+    /// scanners hammering this cache concurrently (App Uninstaller, Screening,
+    /// Folder Browser, Recommendations all funnel through the same lock),
+    /// that showed up as real, sustained multi-core CPU burn. A 300-entry
+    /// buffer means the sort only happens once per ~300 insertions instead
+    /// of once per insertion.
+    private static let maxCacheEntries = 1000
+    private static let pruneTriggerEntries = 1300
 
-    /// Size of a single path in bytes.
-    /// Regular files use instantaneous kernel stat (0 subprocesses).
-    /// Directories use `du` with 30s TTL in-memory caching.
+    /// How long a directory's size stays cached before a rescan recomputes
+    /// it. Bumped from 30s: now that sizing doesn't spawn `du`, a rescan is
+    /// far cheaper than it used to be, but there's still no reason to redo
+    /// a multi-hundred-thousand-file walk (e.g. a big node_modules tree)
+    /// more often than roughly "once a minute" — directory sizes don't
+    /// change that fast in practice, and this is what "Rescan" is for.
+    private static let cacheTTL: TimeInterval = 60.0
+
+    /// Size of a single path in bytes. Zero subprocess spawns for either
+    /// files or directories — see https://github.com/faizazharr/Mac-Scanner/issues/1.
+    /// Files use an instantaneous kernel stat. Directories are walked
+    /// in-process via `FileManager.enumerator`, which was previously done by
+    /// spawning `nice du -sk` per directory. That scaled badly: the App
+    /// Uninstaller tab alone could spawn 50+ `du` processes serially for a
+    /// machine with ~30 apps installed, visibly saturating I/O on 8GB
+    /// hardware — and `nice` only lowers CPU scheduling priority, which does
+    /// nothing for a process that's I/O-bound, not CPU-bound. Walking
+    /// in-process instead means the work happens on *our* thread, so its
+    /// QoS (see `scanChildren`'s `.utility` queue) genuinely throttles disk
+    /// I/O scheduling — something `nice` on a spawned child process can't do.
     static func size(of url: URL) -> Int64 {
         var isDir: ObjCBool = false
-        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), !isDir.boolValue {
-            // Instant 0ms stat lookup for files
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { return 0 }
+
+        if !isDir.boolValue {
+            // Instant 0ms stat lookup for files.
             if let values = try? url.resourceValues(forKeys: [.fileAllocatedSizeKey, .fileSizeKey]) {
                 if let allocated = values.fileAllocatedSize { return Int64(allocated) }
                 if let size = values.fileSize { return Int64(size) }
@@ -24,31 +60,65 @@ enum DiskScanner {
                let size = attrs[.size] as? Int64 {
                 return size
             }
+            return 0
         }
 
-        // For directories: use cached du
         let path = url.path
         let now = Date()
 
         sizeCacheLock.lock()
-        if let cached = sizeCache[path], now.timeIntervalSince(cached.timestamp) < 30.0 {
+        if let cached = sizeCache[path], now.timeIntervalSince(cached.timestamp) < cacheTTL {
             sizeCacheLock.unlock()
             return cached.size
         }
         sizeCacheLock.unlock()
 
-        let output = Shell.runNiced("/usr/bin/du", ["-sk", path])
-        let kb = output
-            .split(separator: "\t")
-            .first
-            .flatMap { Int64($0) } ?? 0
-        let bytes = kb * 1024
+        let bytes = directorySize(at: url)
 
         sizeCacheLock.lock()
         sizeCache[path] = (bytes, now)
+        if sizeCache.count > pruneTriggerEntries {
+            let expiredCutoff = now.addingTimeInterval(-cacheTTL)
+            sizeCache = sizeCache.filter { $0.value.timestamp > expiredCutoff }
+            if sizeCache.count > maxCacheEntries {
+                let oldestFirst = sizeCache.sorted { $0.value.timestamp < $1.value.timestamp }
+                for (staleKey, _) in oldestFirst.prefix(sizeCache.count - maxCacheEntries) {
+                    sizeCache.removeValue(forKey: staleKey)
+                }
+            }
+        }
         sizeCacheLock.unlock()
 
         return bytes
+    }
+
+    /// Recursively sums allocated size in-process — no `du` spawn. Skips
+    /// summing directory entries themselves (their own on-disk footprint is
+    /// a handful of KB, negligible next to their contents) but deliberately
+    /// does *not* skip hidden files: on macOS `~/Library` carries the
+    /// UF_HIDDEN flag (not a dot-prefix), and it's usually the single
+    /// biggest space consumer — an enumerator that skips hidden items would
+    /// silently zero it out.
+    private static func directorySize(at url: URL) -> Int64 {
+        let resourceKeys: [URLResourceKey] = [.isDirectoryKey, .fileAllocatedSizeKey, .fileSizeKey]
+        guard let enumerator = FileManager.default.enumerator(
+            at: url,
+            includingPropertiesForKeys: resourceKeys,
+            options: [],
+            errorHandler: { _, _ in true } // keep going past permission-denied subitems
+        ) else { return 0 }
+
+        var total: Int64 = 0
+        for case let itemURL as URL in enumerator {
+            guard let values = try? itemURL.resourceValues(forKeys: Set(resourceKeys)),
+                  values.isDirectory != true else { continue }
+            if let allocated = values.fileAllocatedSize {
+                total += Int64(allocated)
+            } else if let size = values.fileSize {
+                total += Int64(size)
+            }
+        }
+        return total
     }
 
     /// Clears the size cache (e.g. after a clean action).

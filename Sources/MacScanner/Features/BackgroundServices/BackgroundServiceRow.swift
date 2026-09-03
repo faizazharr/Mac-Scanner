@@ -77,7 +77,7 @@ struct BackgroundServiceRow: View, Equatable {
 
             if service.plistURL != nil {
                 Button(action: onReveal) {
-                    Image(systemName: "folder.badge.magnifyingglass")
+                    Image(systemName: "arrow.up.forward.app")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

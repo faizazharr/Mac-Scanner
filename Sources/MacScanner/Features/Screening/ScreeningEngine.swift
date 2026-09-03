@@ -151,47 +151,66 @@ final class ScreeningEngine: ObservableObject {
             fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications")
         ]
 
-        var items: [AppUsageScreeningItem] = []
+        // Phase 1 (cheap, serial): just enumerate + dedupe candidate app
+        // bundles — no per-app sizing work happens here.
+        var candidates: [(name: String, bundleID: String, url: URL)] = []
         var seenIDs = Set<String>()
 
         for dir in appDirs {
             guard let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) else {
                 continue
             }
-
             for url in contents where url.pathExtension == "app" {
                 let name = url.deletingPathExtension().lastPathComponent
                 guard let bundle = Bundle(url: url),
                       let bundleID = bundle.bundleIdentifier,
                       !seenIDs.contains(bundleID) else { continue }
-
                 seenIDs.insert(bundleID)
-                let icon = AppIconCache.shared.icon(for: url.path)
-                let isRunning = runningBundleIDs.contains(bundleID)
-
-                // Approximate app size
-                let size = DiskScanner.size(of: url)
-                let modDate = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
-
-                // Battery & Daily hours heuristic
-                let (dailyHours, battLevel, battPercent, explanation) = evaluateBatteryImpact(name: name, bundleID: bundleID, isRunning: isRunning)
-
-                items.append(
-                    AppUsageScreeningItem(
-                        name: name,
-                        bundleID: bundleID,
-                        icon: icon,
-                        isRunning: isRunning,
-                        totalSizeBytes: size,
-                        lastUsedDate: modDate,
-                        estimatedDailyHours: dailyHours,
-                        batteryImpactLevel: battLevel,
-                        batteryPercentageImpact: battPercent,
-                        explanation: explanation
-                    )
-                )
+                candidates.append((name, bundleID, url))
             }
         }
+
+        // Phase 2 (the actual per-app work — icon load + directory sizing):
+        // bounded-concurrent, same pattern as `AppUninstallerEngine` and
+        // `DiskScanner.scanChildren`, instead of one candidate at a time.
+        var items: [AppUsageScreeningItem] = []
+        let itemsLock = NSLock()
+        let group = DispatchGroup()
+        let semaphore = DispatchSemaphore(value: 6)
+
+        for candidate in candidates {
+            group.enter()
+            semaphore.wait()
+            DispatchQueue.global(qos: .utility).async {
+                defer {
+                    semaphore.signal()
+                    group.leave()
+                }
+                let icon = AppIconCache.shared.icon(for: candidate.url.path)
+                let isRunning = runningBundleIDs.contains(candidate.bundleID)
+                let size = DiskScanner.size(of: candidate.url)
+                let modDate = (try? candidate.url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
+                let (dailyHours, battLevel, battPercent, explanation) = evaluateBatteryImpact(name: candidate.name, bundleID: candidate.bundleID, isRunning: isRunning)
+
+                let item = AppUsageScreeningItem(
+                    name: candidate.name,
+                    bundleID: candidate.bundleID,
+                    icon: icon,
+                    isRunning: isRunning,
+                    totalSizeBytes: size,
+                    lastUsedDate: modDate,
+                    estimatedDailyHours: dailyHours,
+                    batteryImpactLevel: battLevel,
+                    batteryPercentageImpact: battPercent,
+                    explanation: explanation
+                )
+
+                itemsLock.lock()
+                items.append(item)
+                itemsLock.unlock()
+            }
+        }
+        group.wait()
 
         // Sort by daily usage and battery impact
         items.sort {

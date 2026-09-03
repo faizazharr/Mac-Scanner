@@ -221,7 +221,7 @@ struct AppUninstallerAppCard: View {
             Button {
                 FileActions.reveal(item.url)
             } label: {
-                Image(systemName: "folder.badge.magnifyingglass")
+                Image(systemName: "arrow.up.forward.app")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

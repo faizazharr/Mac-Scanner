@@ -20,7 +20,14 @@ final class BackgroundServicesViewModel: ObservableObject {
 
     @Published private(set) var services: [BackgroundService] = []
     @Published private(set) var isScanning: Bool = false
-    @Published var filter: ServiceFilter = .all
+    @Published var filter: ServiceFilter = .all { didSet { currentPage = 0 } }
+    @Published private(set) var currentPage: Int = 0
+
+    /// Rows are rendered a page at a time instead of all ~500+ at once —
+    /// a `LazyVStack` still has to lay out every row's frame once its
+    /// `ForEach` diffs a 500-item array on each 30s poll, which was
+    /// showing up as visible per-tick main-thread cost.
+    let pageSize = 40
 
     private var timer: Timer?
 
@@ -33,6 +40,27 @@ final class BackgroundServicesViewModel: ObservableObject {
         case .running:    return services.filter { $0.status.isRunning }
         case .heavy:      return services.filter { $0.cpuPercent > 5 }
         }
+    }
+
+    var totalPages: Int {
+        max(1, Int(ceil(Double(filteredServices.count) / Double(pageSize))))
+    }
+
+    var pagedServices: [BackgroundService] {
+        let all = filteredServices
+        let start = min(currentPage * pageSize, all.count)
+        let end = min(start + pageSize, all.count)
+        return Array(all[start..<end])
+    }
+
+    func nextPage() {
+        guard currentPage + 1 < totalPages else { return }
+        currentPage += 1
+    }
+
+    func previousPage() {
+        guard currentPage > 0 else { return }
+        currentPage -= 1
     }
 
     var totalRunning: Int    { services.filter { $0.status.isRunning }.count }
@@ -60,6 +88,7 @@ final class BackgroundServicesViewModel: ObservableObject {
             await MainActor.run {
                 self.services = result
                 self.isScanning = false
+                self.currentPage = 0
             }
         }
     }

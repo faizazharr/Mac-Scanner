@@ -190,20 +190,42 @@ final class AppUninstallerEngine: ObservableObject {
             }
         }
 
-        // Concurrently scan root leftovers and calculate sizes for all applications
+        // Concurrently scan root leftovers and calculate sizes for all
+        // applications. This used to be a plain serial `for` loop despite
+        // the comment — with up to a dozen `DiskScanner.size()` calls per
+        // app, that meant scanning them one full app at a time (see
+        // https://github.com/faizazharr/Mac-Scanner/issues/1). Bounded to 6
+        // concurrent apps, matching the semaphore pattern already used in
+        // `DiskScanner.scanChildren` and `RecommendationEngine.evaluate`.
         var completedApps: [InstalledAppInfo] = []
+        let completedAppsLock = NSLock()
+        let group = DispatchGroup()
+        let semaphore = DispatchSemaphore(value: 6)
+
         for raw in rawApps {
-            var tempApp = InstalledAppInfo(
-                name: raw.name,
-                bundleID: raw.bundleID,
-                bundleURL: raw.bundleURL,
-                icon: raw.icon,
-                version: raw.version,
-                isSystemApp: raw.isSystem
-            )
-            tempApp.items = scanAppLeftovers(app: tempApp)
-            completedApps.append(tempApp)
+            group.enter()
+            semaphore.wait()
+            DispatchQueue.global(qos: .utility).async {
+                defer {
+                    semaphore.signal()
+                    group.leave()
+                }
+                var tempApp = InstalledAppInfo(
+                    name: raw.name,
+                    bundleID: raw.bundleID,
+                    bundleURL: raw.bundleURL,
+                    icon: raw.icon,
+                    version: raw.version,
+                    isSystemApp: raw.isSystem
+                )
+                tempApp.items = scanAppLeftovers(app: tempApp)
+
+                completedAppsLock.lock()
+                completedApps.append(tempApp)
+                completedAppsLock.unlock()
+            }
         }
+        group.wait()
 
         // Sort by total size descending so heaviest apps appear first by default
         completedApps.sort { $0.totalSizeBytes > $1.totalSizeBytes }

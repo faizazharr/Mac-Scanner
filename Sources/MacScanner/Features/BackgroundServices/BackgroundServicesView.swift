@@ -39,6 +39,10 @@ struct BackgroundServicesView: View {
                 emptyState
             } else {
                 serviceList
+                Divider().opacity(0.3)
+                pagerBar
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
             }
         }
         .onAppear { vm.appear() }
@@ -170,7 +174,7 @@ struct BackgroundServicesView: View {
     private var serviceList: some View {
         ScrollView {
             LazyVStack(spacing: 5) {
-                ForEach(vm.filteredServices) { service in
+                ForEach(vm.pagedServices) { service in
                     BackgroundServiceRow(service: service) {
                         if let url = service.plistURL {
                             NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -181,6 +185,45 @@ struct BackgroundServicesView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
+        }
+    }
+
+    // MARK: - Pager
+
+    private var pagerBar: some View {
+        HStack {
+            let start = vm.currentPage * vm.pageSize + 1
+            let end = min(start + vm.pageSize - 1, vm.filteredServices.count)
+            Text("\(start)–\(end) of \(vm.filteredServices.count)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                Button {
+                    vm.previousPage()
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(vm.currentPage == 0)
+
+                Text("Page \(vm.currentPage + 1) of \(vm.totalPages)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 90)
+
+                Button {
+                    vm.nextPage()
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(vm.currentPage + 1 >= vm.totalPages)
+            }
         }
     }
 
