@@ -18,6 +18,7 @@ This document outlines the planned technical milestones and feature enhancements
 ## 🔮 Upcoming Milestones
 
 ### 📌 Milestone 1: Homebrew Cask & CLI Companion (v1.3.0)
+- [ ] **Developer ID Signing & Notarization**: Enroll in the Apple Developer Program, switch CI from an ad-hoc/Apple-Development signature to a `Developer ID Application` cert, and notarize + staple every release DMG so Gatekeeper stops blocking first launch on other people's Macs.
 - [ ] **Official Homebrew Cask**: `brew install --cask macscanner` distribution formula.
 - [ ] **Headless CLI Companion**: Lightweight command-line utility (`macscanner scan`, `macscanner stats`) for terminal power users and automated shell scripts.
 - [ ] **Auto-Update Framework**: Lightweight, privacy-preserving in-app update checks using Sparkle / GitHub Releases API (opt-in).

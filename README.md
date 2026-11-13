@@ -133,7 +133,11 @@ MacScanner is built with an **intelligent hardware-adaptive engine** that dynami
 
 1. Download and open **`MacScanner.dmg`**.
 2. Drag **MacScanner.app** into your **Applications** folder.
-3. Open the app and grant Full Disk Access when prompted for complete root cleaning capabilities.
+3. **First launch only:** macOS will block the app with *"Apple could not verify..."* because MacScanner isn't notarized yet (no paid Apple Developer Program enrollment — see [Roadmap](ROADMAP.md)). To open it:
+   - Easiest: double-click **`Fix Gatekeeper Block.command`** inside the DMG — it clears the quarantine flag and opens the app for you.
+   - Or, go to **System Settings → Privacy & Security**, scroll to the Security section, and click **Open Anyway** next to the MacScanner warning, then confirm.
+   - Or, in Terminal: `xattr -cr /Applications/MacScanner.app`, then open normally.
+4. Open the app and grant Full Disk Access when prompted for complete root cleaning capabilities.
 
 ### Option 2: Build from Source (Developers)
 

@@ -29,6 +29,11 @@ cp -R "$APP_PATH" "$STAGING_DIR/MacScanner.app"
 # Create drag-and-drop symlink to /Applications
 ln -s /Applications "$STAGING_DIR/Applications"
 
+# Double-click helper for users Gatekeeper blocks on first launch (app isn't
+# notarized — see README's Installation section).
+cp "Scripts/dmg_resources/Fix Gatekeeper Block.command" "$STAGING_DIR/Fix Gatekeeper Block.command"
+chmod +x "$STAGING_DIR/Fix Gatekeeper Block.command"
+
 echo "==> Packaging MacScanner.dmg (Max Compression zlib-9)..."
 hdiutil create \
     -volname "MacScanner" \
